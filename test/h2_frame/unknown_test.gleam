@@ -69,11 +69,9 @@ pub fn encode_unknown_frame_test() {
   h2_frame.encode_unknown(frame_type_code: 0xFF, stream_id: 0, flags: 0, data: <<
     "hello":utf8,
   >>)
-  |> should.equal(
-    Ok(<<
+  |> should.equal(<<
       5:size(24), 0xFF:size(8), 0:size(8), 0:size(1), 0:size(31), "hello":utf8,
-    >>),
-  )
+    >>)
 }
 
 pub fn encode_unknown_frame_with_stream_id_test() {
@@ -81,11 +79,9 @@ pub fn encode_unknown_frame_with_stream_id_test() {
   h2_frame.encode_unknown(frame_type_code: 0x0A, stream_id: 5, flags: 0, data: <<
     "abc":utf8,
   >>)
-  |> should.equal(
-    Ok(<<
+  |> should.equal(<<
       3:size(24), 0x0A:size(8), 0:size(8), 0:size(1), 5:size(31), "abc":utf8,
-    >>),
-  )
+    >>)
 }
 
 pub fn encode_unknown_frame_with_flags_test() {
@@ -93,11 +89,9 @@ pub fn encode_unknown_frame_with_flags_test() {
   h2_frame.encode_unknown(frame_type_code: 0x0B, stream_id: 1, flags: 0xFF, data: <<
     "abc":utf8,
   >>)
-  |> should.equal(
-    Ok(<<
+  |> should.equal(<<
       3:size(24), 0x0B:size(8), 0xFF:size(8), 0:size(1), 1:size(31), "abc":utf8,
-    >>),
-  )
+    >>)
 }
 
 pub fn encode_unknown_frame_empty_payload_test() {
@@ -108,14 +102,12 @@ pub fn encode_unknown_frame_empty_payload_test() {
     flags: 0,
     data: <<>>,
   )
-  |> should.equal(
-    Ok(<<0:size(24), 0x0C:size(8), 0:size(8), 0:size(1), 0:size(31)>>),
-  )
+  |> should.equal(<<0:size(24), 0x0C:size(8), 0:size(8), 0:size(1), 0:size(31)>>)
 }
 
 pub fn encode_unknown_frame_roundtrip_test() {
   // Encode then parse should produce the same values
-  let assert Ok(encoded) =
+  let encoded =
     h2_frame.encode_unknown(frame_type_code: 0x0E, stream_id: 0, flags: 0, data: <<
       "test":utf8,
     >>)

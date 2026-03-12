@@ -880,7 +880,7 @@ pub fn encode_goaway(
   last_stream_id last_stream_id: Int,
   error_code error_code: error.ErrorCode,
   debug_data debug_data: BitArray,
-) -> Result(BitArray, FrameError) {
+) -> BitArray {
   let stream_id = 0
 
   let length = 8 + bit_array.byte_size(debug_data)
@@ -895,13 +895,13 @@ pub fn encode_goaway(
       stream_id: stream_id,
     )
 
-  Ok(<<
+  <<
     header.encode_header(frame_header):bits,
     0:size(1),
     last_stream_id:size(31),
     error.encode_error_code(error_code):size(32),
     debug_data:bits,
-  >>)
+  >>
 }
 
 pub fn encode_window_update(
@@ -964,7 +964,7 @@ pub fn encode_unknown(
   stream_id stream_id: Int,
   flags flags: Int,
   data data: BitArray,
-) -> Result(BitArray, FrameError) {
+) -> BitArray {
   // Maybe shouldn't return a Error? Or maybe for symetry?
   let length = bit_array.byte_size(data)
 
@@ -976,5 +976,5 @@ pub fn encode_unknown(
       stream_id: stream_id,
     )
 
-  Ok(<<header.encode_header(frame_header):bits, data:bits>>)
+  <<header.encode_header(frame_header):bits, data:bits>>
 }
