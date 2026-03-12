@@ -70,8 +70,8 @@ pub fn encode_unknown_frame_test() {
     "hello":utf8,
   >>)
   |> should.equal(<<
-      5:size(24), 0xFF:size(8), 0:size(8), 0:size(1), 0:size(31), "hello":utf8,
-    >>)
+    5:size(24), 0xFF:size(8), 0:size(8), 0:size(1), 0:size(31), "hello":utf8,
+  >>)
 }
 
 pub fn encode_unknown_frame_with_stream_id_test() {
@@ -80,18 +80,23 @@ pub fn encode_unknown_frame_with_stream_id_test() {
     "abc":utf8,
   >>)
   |> should.equal(<<
-      3:size(24), 0x0A:size(8), 0:size(8), 0:size(1), 5:size(31), "abc":utf8,
-    >>)
+    3:size(24), 0x0A:size(8), 0:size(8), 0:size(1), 5:size(31), "abc":utf8,
+  >>)
 }
 
 pub fn encode_unknown_frame_with_flags_test() {
   // RFC 9113 Section 4.1: Unknown frames can carry arbitrary flags
-  h2_frame.encode_unknown(frame_type_code: 0x0B, stream_id: 1, flags: 0xFF, data: <<
-    "abc":utf8,
-  >>)
+  h2_frame.encode_unknown(
+    frame_type_code: 0x0B,
+    stream_id: 1,
+    flags: 0xFF,
+    data: <<
+      "abc":utf8,
+    >>,
+  )
   |> should.equal(<<
-      3:size(24), 0x0B:size(8), 0xFF:size(8), 0:size(1), 1:size(31), "abc":utf8,
-    >>)
+    3:size(24), 0x0B:size(8), 0xFF:size(8), 0:size(1), 1:size(31), "abc":utf8,
+  >>)
 }
 
 pub fn encode_unknown_frame_empty_payload_test() {
@@ -108,9 +113,14 @@ pub fn encode_unknown_frame_empty_payload_test() {
 pub fn encode_unknown_frame_roundtrip_test() {
   // Encode then parse should produce the same values
   let encoded =
-    h2_frame.encode_unknown(frame_type_code: 0x0E, stream_id: 0, flags: 0, data: <<
-      "test":utf8,
-    >>)
+    h2_frame.encode_unknown(
+      frame_type_code: 0x0E,
+      stream_id: 0,
+      flags: 0,
+      data: <<
+        "test":utf8,
+      >>,
+    )
   let assert Ok(#(h, rest)) = header.parse_header(encoded)
   h2_frame.parse_payload(h, rest)
   |> should.equal(Ok(#(h2_frame.Unknown(data: <<"test":utf8>>), <<>>)))

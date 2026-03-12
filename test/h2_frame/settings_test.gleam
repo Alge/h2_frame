@@ -89,7 +89,9 @@ pub fn parse_settings_unknown_setting_test() {
   |> should.equal(
     Ok(
       #(
-        h2_frame.Settings(ack: False, settings: [h2_frame.UnknownSetting(0xFF, 42)]),
+        h2_frame.Settings(ack: False, settings: [
+          h2_frame.UnknownSetting(0xFF, 42),
+        ]),
         <<>>,
       ),
     ),
@@ -162,10 +164,13 @@ pub fn parse_settings_with_trailing_data_test() {
   h2_frame.parse_payload(h, rest)
   |> should.equal(
     Ok(
-      #(h2_frame.Settings(ack: False, settings: [h2_frame.HeaderTableSize(4096)]), <<
-        99,
-        99,
-      >>),
+      #(
+        h2_frame.Settings(ack: False, settings: [h2_frame.HeaderTableSize(4096)]),
+        <<
+          99,
+          99,
+        >>,
+      ),
     ),
   )
 }
@@ -190,7 +195,9 @@ pub fn encode_settings_ack_test() {
 
 pub fn encode_settings_single_test() {
   // RFC 9113 Section 6.5: Single setting HEADER_TABLE_SIZE=4096
-  h2_frame.encode_settings(ack: False, settings: [h2_frame.HeaderTableSize(4096)])
+  h2_frame.encode_settings(ack: False, settings: [
+    h2_frame.HeaderTableSize(4096),
+  ])
   |> should.equal(
     Ok(<<
       6:size(24), 4:size(8), 0:size(8), 0:size(1), 0:size(31), 0x01:size(16),
@@ -235,7 +242,9 @@ pub fn encode_settings_all_known_test() {
 
 pub fn encode_settings_unknown_setting_test() {
   // RFC 9113 Section 6.5.2: Unknown settings are valid
-  h2_frame.encode_settings(ack: False, settings: [h2_frame.UnknownSetting(0xFF, 42)])
+  h2_frame.encode_settings(ack: False, settings: [
+    h2_frame.UnknownSetting(0xFF, 42),
+  ])
   |> should.equal(
     Ok(<<
       6:size(24), 4:size(8), 0:size(8), 0:size(1), 0:size(31), 0xFF:size(16),

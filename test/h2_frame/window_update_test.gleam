@@ -11,7 +11,9 @@ pub fn parse_window_update_test() {
   >>
   let assert Ok(#(h, rest)) = header.parse_header(data)
   h2_frame.parse_payload(h, rest)
-  |> should.equal(Ok(#(h2_frame.WindowUpdate(window_size_increment: 1000), <<>>)))
+  |> should.equal(
+    Ok(#(h2_frame.WindowUpdate(window_size_increment: 1000), <<>>)),
+  )
 }
 
 pub fn parse_window_update_connection_test() {
@@ -93,7 +95,9 @@ pub fn parse_window_update_unknown_flags_ignored_test() {
   >>
   let assert Ok(#(h, rest)) = header.parse_header(data)
   h2_frame.parse_payload(h, rest)
-  |> should.equal(Ok(#(h2_frame.WindowUpdate(window_size_increment: 1000), <<>>)))
+  |> should.equal(
+    Ok(#(h2_frame.WindowUpdate(window_size_increment: 1000), <<>>)),
+  )
 }
 
 pub fn parse_window_update_truncated_payload_test() {
@@ -143,7 +147,10 @@ pub fn encode_window_update_connection_test() {
 
 pub fn encode_window_update_max_increment_test() {
   // RFC 9113 Section 6.9: Maximum window size increment 2^31-1
-  h2_frame.encode_window_update(stream_id: 1, window_size_increment: 2_147_483_647)
+  h2_frame.encode_window_update(
+    stream_id: 1,
+    window_size_increment: 2_147_483_647,
+  )
   |> should.equal(
     Ok(<<
       4:size(24), 8:size(8), 0:size(8), 0:size(1), 1:size(31), 0:size(1),
@@ -164,5 +171,7 @@ pub fn encode_window_update_roundtrip_test() {
     h2_frame.encode_window_update(stream_id: 3, window_size_increment: 5000)
   let assert Ok(#(h, rest)) = header.parse_header(encoded)
   h2_frame.parse_payload(h, rest)
-  |> should.equal(Ok(#(h2_frame.WindowUpdate(window_size_increment: 5000), <<>>)))
+  |> should.equal(
+    Ok(#(h2_frame.WindowUpdate(window_size_increment: 5000), <<>>)),
+  )
 }

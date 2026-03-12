@@ -59,9 +59,13 @@ pub fn parse_goaway_with_debug_data_test() {
   |> should.equal(
     Ok(
       #(
-        h2_frame.GoAway(last_stream_id: 1, error_code: error.NoError, debug_data: <<
-          "hello":utf8,
-        >>),
+        h2_frame.GoAway(
+          last_stream_id: 1,
+          error_code: error.NoError,
+          debug_data: <<
+            "hello":utf8,
+          >>,
+        ),
         <<>>,
       ),
     ),
@@ -222,9 +226,9 @@ pub fn encode_goaway_test() {
     debug_data: <<>>,
   )
   |> should.equal(<<
-      8:size(24), 7:size(8), 0:size(8), 0:size(1), 0:size(31), 0:size(1),
-      1:size(31), 0x00:size(32),
-    >>)
+    8:size(24), 7:size(8), 0:size(8), 0:size(1), 0:size(31), 0:size(1),
+    1:size(31), 0x00:size(32),
+  >>)
 }
 
 pub fn encode_goaway_with_error_test() {
@@ -235,20 +239,24 @@ pub fn encode_goaway_with_error_test() {
     debug_data: <<>>,
   )
   |> should.equal(<<
-      8:size(24), 7:size(8), 0:size(8), 0:size(1), 0:size(31), 0:size(1),
-      5:size(31), 0x01:size(32),
-    >>)
+    8:size(24), 7:size(8), 0:size(8), 0:size(1), 0:size(31), 0:size(1),
+    5:size(31), 0x01:size(32),
+  >>)
 }
 
 pub fn encode_goaway_with_debug_data_test() {
   // RFC 9113 Section 6.8: GOAWAY with additional debug data
-  h2_frame.encode_goaway(last_stream_id: 1, error_code: error.NoError, debug_data: <<
-    "hello":utf8,
-  >>)
+  h2_frame.encode_goaway(
+    last_stream_id: 1,
+    error_code: error.NoError,
+    debug_data: <<
+      "hello":utf8,
+    >>,
+  )
   |> should.equal(<<
-      13:size(24), 7:size(8), 0:size(8), 0:size(1), 0:size(31), 0:size(1),
-      1:size(31), 0x00:size(32), "hello":utf8,
-    >>)
+    13:size(24), 7:size(8), 0:size(8), 0:size(1), 0:size(31), 0:size(1),
+    1:size(31), 0x00:size(32), "hello":utf8,
+  >>)
 }
 
 pub fn encode_goaway_zero_last_stream_id_test() {
@@ -259,9 +267,9 @@ pub fn encode_goaway_zero_last_stream_id_test() {
     debug_data: <<>>,
   )
   |> should.equal(<<
-      8:size(24), 7:size(8), 0:size(8), 0:size(1), 0:size(31), 0:size(1),
-      0:size(31), 0x00:size(32),
-    >>)
+    8:size(24), 7:size(8), 0:size(8), 0:size(1), 0:size(31), 0:size(1),
+    0:size(31), 0x00:size(32),
+  >>)
 }
 
 pub fn encode_goaway_unknown_error_code_test() {
@@ -272,9 +280,9 @@ pub fn encode_goaway_unknown_error_code_test() {
     debug_data: <<>>,
   )
   |> should.equal(<<
-      8:size(24), 7:size(8), 0:size(8), 0:size(1), 0:size(31), 0:size(1),
-      1:size(31), 0xFF:size(32),
-    >>)
+    8:size(24), 7:size(8), 0:size(8), 0:size(1), 0:size(31), 0:size(1),
+    1:size(31), 0xFF:size(32),
+  >>)
 }
 
 pub fn encode_goaway_roundtrip_test() {

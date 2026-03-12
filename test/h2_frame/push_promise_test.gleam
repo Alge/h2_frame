@@ -120,7 +120,11 @@ pub fn parse_push_promise_empty_fragment_test() {
   |> should.equal(
     Ok(
       #(
-        h2_frame.PushPromise(end_headers: False, promised_stream_id: 2, data: <<>>),
+        h2_frame.PushPromise(
+          end_headers: False,
+          promised_stream_id: 2,
+          data: <<>>,
+        ),
         <<>>,
       ),
     ),

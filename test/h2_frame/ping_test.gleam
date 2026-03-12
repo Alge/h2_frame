@@ -95,7 +95,9 @@ pub fn parse_ping_with_trailing_data_test() {
   let assert Ok(#(h, rest)) = header.parse_header(data)
   h2_frame.parse_payload(h, rest)
   |> should.equal(
-    Ok(#(h2_frame.Ping(ack: False, data: <<1, 2, 3, 4, 5, 6, 7, 8>>), <<99, 99>>)),
+    Ok(
+      #(h2_frame.Ping(ack: False, data: <<1, 2, 3, 4, 5, 6, 7, 8>>), <<99, 99>>),
+    ),
   )
 }
 
@@ -154,7 +156,10 @@ pub fn encode_ping_roundtrip_test() {
   h2_frame.parse_payload(h, rest)
   |> should.equal(
     Ok(
-      #(h2_frame.Ping(ack: False, data: <<10, 20, 30, 40, 50, 60, 70, 80>>), <<>>),
+      #(
+        h2_frame.Ping(ack: False, data: <<10, 20, 30, 40, 50, 60, 70, 80>>),
+        <<>>,
+      ),
     ),
   )
 }

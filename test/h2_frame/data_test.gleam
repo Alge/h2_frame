@@ -4,7 +4,6 @@ import h2_frame
 import h2_frame/error
 import h2_frame/header.{FrameHeader}
 
-
 pub fn parse_data_test() {
   // RFC 9113 Section 6.1: DATA frame with simple payload
   let data = <<
@@ -302,7 +301,12 @@ pub fn encode_data_padded_zero_test() {
 
 pub fn encode_data_empty_payload_test() {
   // RFC 9113 Section 6.1: DATA frame with zero-length data is valid
-  h2_frame.encode_data(stream_id: 1, end_stream: False, data: <<>>, padding: None)
+  h2_frame.encode_data(
+    stream_id: 1,
+    end_stream: False,
+    data: <<>>,
+    padding: None,
+  )
   |> should.equal(
     Ok(<<0:size(24), 0:size(8), 0:size(8), 0:size(1), 1:size(31)>>),
   )

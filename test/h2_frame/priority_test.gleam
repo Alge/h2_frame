@@ -50,7 +50,10 @@ pub fn parse_priority_zero_weight_test() {
   h2_frame.parse_payload(h, rest)
   |> should.equal(
     Ok(
-      #(h2_frame.Priority(exclusive: False, stream_dependency: 0, weight: 0), <<>>),
+      #(
+        h2_frame.Priority(exclusive: False, stream_dependency: 0, weight: 0),
+        <<>>,
+      ),
     ),
   )
 }

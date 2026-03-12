@@ -11,7 +11,9 @@ pub fn parse_continuation_test() {
   let assert Ok(#(h, rest)) = header.parse_header(data)
   h2_frame.parse_payload(h, rest)
   |> should.equal(
-    Ok(#(h2_frame.Continuation(end_headers: False, data: <<"hello":utf8>>), <<>>)),
+    Ok(
+      #(h2_frame.Continuation(end_headers: False, data: <<"hello":utf8>>), <<>>),
+    ),
   )
 }
 
@@ -79,7 +81,10 @@ pub fn parse_continuation_with_trailing_data_test() {
   h2_frame.parse_payload(h, rest)
   |> should.equal(
     Ok(
-      #(h2_frame.Continuation(end_headers: False, data: <<"abc":utf8>>), <<99, 99>>),
+      #(h2_frame.Continuation(end_headers: False, data: <<"abc":utf8>>), <<
+        99,
+        99,
+      >>),
     ),
   )
 }
@@ -131,6 +136,8 @@ pub fn encode_continuation_roundtrip_test() {
   let assert Ok(#(h, rest)) = header.parse_header(encoded)
   h2_frame.parse_payload(h, rest)
   |> should.equal(
-    Ok(#(h2_frame.Continuation(end_headers: True, data: <<"hpack":utf8>>), <<>>)),
+    Ok(
+      #(h2_frame.Continuation(end_headers: True, data: <<"hpack":utf8>>), <<>>),
+    ),
   )
 }

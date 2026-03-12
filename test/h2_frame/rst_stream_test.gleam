@@ -10,7 +10,9 @@ pub fn parse_rst_stream_test() {
   >>
   let assert Ok(#(h, rest)) = header.parse_header(data)
   h2_frame.parse_payload(h, rest)
-  |> should.equal(Ok(#(h2_frame.RstStream(error_code: error.ProtocolError), <<>>)))
+  |> should.equal(
+    Ok(#(h2_frame.RstStream(error_code: error.ProtocolError), <<>>)),
+  )
 }
 
 pub fn parse_rst_stream_no_error_test() {
@@ -82,7 +84,9 @@ pub fn parse_rst_stream_unknown_flags_ignored_test() {
   >>
   let assert Ok(#(h, rest)) = header.parse_header(data)
   h2_frame.parse_payload(h, rest)
-  |> should.equal(Ok(#(h2_frame.RstStream(error_code: error.ProtocolError), <<>>)))
+  |> should.equal(
+    Ok(#(h2_frame.RstStream(error_code: error.ProtocolError), <<>>)),
+  )
 }
 
 pub fn parse_rst_stream_truncated_payload_test() {
