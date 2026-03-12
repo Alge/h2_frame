@@ -62,6 +62,8 @@ pub fn encode_header(header: FrameHeader) -> BitArray {
   >>
 }
 
+/// Parses a 9-byte HTTP/2 frame header from binary data.
+/// Returns the frame header and any remaining bytes after it.
 pub fn parse_header(
   data: BitArray,
 ) -> Result(#(FrameHeader, BitArray), HeaderError) {
