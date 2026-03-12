@@ -16,7 +16,7 @@ pub type FrameHeader {
   FrameHeader(length: Int, frame_type: FrameType, flags: Int, stream_id: Int)
 }
 
-pub type FrameError {
+pub type HeaderError {
   IncompleteHeader
 }
 
@@ -64,7 +64,7 @@ pub fn encode_header(header: FrameHeader) -> BitArray {
 
 pub fn parse_header(
   data: BitArray,
-) -> Result(#(FrameHeader, BitArray), FrameError) {
+) -> Result(#(FrameHeader, BitArray), HeaderError) {
   case data {
     <<
       length:size(24),
