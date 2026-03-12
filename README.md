@@ -5,7 +5,7 @@
 
 An HTTP/2 frame encoder and decoder for Gleam.
 
-Handles all standard HTTP/2 frame types as defined in [RFC 7540](https://httpwg.org/specs/rfc7540.html): DATA, HEADERS, PRIORITY, RST_STREAM, SETTINGS, PUSH_PROMISE, PING, GOAWAY, WINDOW_UPDATE, and CONTINUATION. Unknown frame types are preserved rather than rejected.
+Handles all standard HTTP/2 frame types as defined in [RFC 9113](https://httpwg.org/specs/rfc9113.html): DATA, HEADERS, PRIORITY, RST_STREAM, SETTINGS, PUSH_PROMISE, PING, GOAWAY, WINDOW_UPDATE, and CONTINUATION. Unknown frame types are preserved rather than rejected.
 
 ## Installation
 
