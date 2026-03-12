@@ -505,6 +505,8 @@ fn parse_unknown_payload(
   }
 }
 
+/// Parses a frame payload given an already-parsed frame header.
+/// Returns the decoded payload and any remaining bytes after the frame.
 pub fn parse_payload(
   frame_header: header.FrameHeader,
   data: BitArray,
@@ -524,6 +526,9 @@ pub fn parse_payload(
   }
 }
 
+/// Parses a complete HTTP/2 frame from binary data.
+/// Returns the frame header, payload, and any remaining bytes
+/// that follow the frame.
 pub fn parse(
   data: BitArray,
 ) -> Result(#(header.FrameHeader, Payload, BitArray), FrameError) {
