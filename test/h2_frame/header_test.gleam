@@ -1,5 +1,5 @@
 import gleeunit/should
-import h2o/frame/header.{FrameHeader}
+import h2_frame/header.{FrameHeader}
 
 pub fn parse_ping_header_test() {
   // 9-byte header: length=0, type=6 (PING), flags=0, stream_id=0

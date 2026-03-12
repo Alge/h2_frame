@@ -1,8 +1,8 @@
 import gleam/option.{None, Some}
 import gleeunit/should
-import h2o/frame
-import h2o/frame/error
-import h2o/frame/header
+import h2_frame
+import h2_frame/error
+import h2_frame/header
 
 pub fn parse_push_promise_test() {
   // RFC 9113 Section 6.6: Basic PUSH_PROMISE frame
@@ -12,11 +12,11 @@ pub fn parse_push_promise_test() {
     2:size(31), "abc":utf8,
   >>
   let assert Ok(#(h, rest)) = header.parse_header(data)
-  frame.parse_payload(h, rest)
+  h2_frame.parse_payload(h, rest)
   |> should.equal(
     Ok(
       #(
-        frame.PushPromise(end_headers: False, promised_stream_id: 2, data: <<
+        h2_frame.PushPromise(end_headers: False, promised_stream_id: 2, data: <<
           "abc":utf8,
         >>),
         <<>>,
@@ -32,11 +32,11 @@ pub fn parse_push_promise_end_headers_test() {
     2:size(31), "abc":utf8,
   >>
   let assert Ok(#(h, rest)) = header.parse_header(data)
-  frame.parse_payload(h, rest)
+  h2_frame.parse_payload(h, rest)
   |> should.equal(
     Ok(
       #(
-        frame.PushPromise(end_headers: True, promised_stream_id: 2, data: <<
+        h2_frame.PushPromise(end_headers: True, promised_stream_id: 2, data: <<
           "abc":utf8,
         >>),
         <<>>,
@@ -53,11 +53,11 @@ pub fn parse_push_promise_padded_test() {
     0:size(1), 2:size(31), "ab":utf8, 0, 0,
   >>
   let assert Ok(#(h, rest)) = header.parse_header(data)
-  frame.parse_payload(h, rest)
+  h2_frame.parse_payload(h, rest)
   |> should.equal(
     Ok(
       #(
-        frame.PushPromise(end_headers: False, promised_stream_id: 2, data: <<
+        h2_frame.PushPromise(end_headers: False, promised_stream_id: 2, data: <<
           "ab":utf8,
         >>),
         <<>>,
@@ -73,11 +73,11 @@ pub fn parse_push_promise_padded_end_headers_test() {
     0:size(1), 2:size(31), "ab":utf8, 0, 0,
   >>
   let assert Ok(#(h, rest)) = header.parse_header(data)
-  frame.parse_payload(h, rest)
+  h2_frame.parse_payload(h, rest)
   |> should.equal(
     Ok(
       #(
-        frame.PushPromise(end_headers: True, promised_stream_id: 2, data: <<
+        h2_frame.PushPromise(end_headers: True, promised_stream_id: 2, data: <<
           "ab":utf8,
         >>),
         <<>>,
@@ -93,8 +93,8 @@ pub fn parse_push_promise_stream_id_zero_test() {
     2:size(31), "abc":utf8,
   >>
   let assert Ok(#(h, rest)) = header.parse_header(data)
-  frame.parse_payload(h, rest)
-  |> should.equal(Error(frame.ConnectionError(error.ProtocolError)))
+  h2_frame.parse_payload(h, rest)
+  |> should.equal(Error(h2_frame.ConnectionError(error.ProtocolError)))
 }
 
 pub fn parse_push_promise_padding_exceeds_payload_test() {
@@ -105,8 +105,8 @@ pub fn parse_push_promise_padding_exceeds_payload_test() {
     0:size(1), 2:size(31), 0,
   >>
   let assert Ok(#(h, rest)) = header.parse_header(data)
-  frame.parse_payload(h, rest)
-  |> should.equal(Error(frame.ConnectionError(error.ProtocolError)))
+  h2_frame.parse_payload(h, rest)
+  |> should.equal(Error(h2_frame.ConnectionError(error.ProtocolError)))
 }
 
 pub fn parse_push_promise_empty_fragment_test() {
@@ -116,11 +116,11 @@ pub fn parse_push_promise_empty_fragment_test() {
     2:size(31),
   >>
   let assert Ok(#(h, rest)) = header.parse_header(data)
-  frame.parse_payload(h, rest)
+  h2_frame.parse_payload(h, rest)
   |> should.equal(
     Ok(
       #(
-        frame.PushPromise(end_headers: False, promised_stream_id: 2, data: <<>>),
+        h2_frame.PushPromise(end_headers: False, promised_stream_id: 2, data: <<>>),
         <<>>,
       ),
     ),
@@ -135,11 +135,11 @@ pub fn parse_push_promise_unknown_flags_ignored_test() {
     2:size(31), "abc":utf8,
   >>
   let assert Ok(#(h, rest)) = header.parse_header(data)
-  frame.parse_payload(h, rest)
+  h2_frame.parse_payload(h, rest)
   |> should.equal(
     Ok(
       #(
-        frame.PushPromise(end_headers: False, promised_stream_id: 2, data: <<
+        h2_frame.PushPromise(end_headers: False, promised_stream_id: 2, data: <<
           "abc":utf8,
         >>),
         <<>>,
@@ -152,16 +152,16 @@ pub fn parse_push_promise_truncated_payload_test() {
   // RFC 9113 Section 6.6: Incomplete payload (can't even read promised stream ID)
   let data = <<7:size(24), 5:size(8), 0:size(8), 0:size(1), 1:size(31), 0, 0>>
   let assert Ok(#(h, rest)) = header.parse_header(data)
-  frame.parse_payload(h, rest)
-  |> should.equal(Error(frame.IncompletePayload))
+  h2_frame.parse_payload(h, rest)
+  |> should.equal(Error(h2_frame.IncompletePayload))
 }
 
 pub fn parse_push_promise_padded_empty_payload_test() {
   // RFC 9113 Section 6.6: PADDED flag set but no payload bytes at all
   let data = <<7:size(24), 5:size(8), 8:size(8), 0:size(1), 1:size(31)>>
   let assert Ok(#(h, rest)) = header.parse_header(data)
-  frame.parse_payload(h, rest)
-  |> should.equal(Error(frame.IncompletePayload))
+  h2_frame.parse_payload(h, rest)
+  |> should.equal(Error(h2_frame.IncompletePayload))
 }
 
 pub fn parse_push_promise_with_trailing_data_test() {
@@ -171,11 +171,11 @@ pub fn parse_push_promise_with_trailing_data_test() {
     2:size(31), "abc":utf8, 99, 99,
   >>
   let assert Ok(#(h, rest)) = header.parse_header(data)
-  frame.parse_payload(h, rest)
+  h2_frame.parse_payload(h, rest)
   |> should.equal(
     Ok(
       #(
-        frame.PushPromise(end_headers: False, promised_stream_id: 2, data: <<
+        h2_frame.PushPromise(end_headers: False, promised_stream_id: 2, data: <<
           "abc":utf8,
         >>),
         <<99, 99>>,
@@ -191,11 +191,11 @@ pub fn parse_push_promise_padded_zero_padding_test() {
     0:size(1), 2:size(31), "abc":utf8,
   >>
   let assert Ok(#(h, rest)) = header.parse_header(data)
-  frame.parse_payload(h, rest)
+  h2_frame.parse_payload(h, rest)
   |> should.equal(
     Ok(
       #(
-        frame.PushPromise(end_headers: False, promised_stream_id: 2, data: <<
+        h2_frame.PushPromise(end_headers: False, promised_stream_id: 2, data: <<
           "abc":utf8,
         >>),
         <<>>,
@@ -208,7 +208,7 @@ pub fn parse_push_promise_padded_zero_padding_test() {
 
 pub fn encode_push_promise_test() {
   // RFC 9113 Section 6.6: Basic PUSH_PROMISE frame
-  frame.encode_push_promise(
+  h2_frame.encode_push_promise(
     stream_id: 1,
     end_headers: False,
     promised_stream_id: 2,
@@ -225,7 +225,7 @@ pub fn encode_push_promise_test() {
 
 pub fn encode_push_promise_end_headers_test() {
   // RFC 9113 Section 6.6: END_HEADERS (0x04) flag
-  frame.encode_push_promise(
+  h2_frame.encode_push_promise(
     stream_id: 1,
     end_headers: True,
     promised_stream_id: 2,
@@ -242,7 +242,7 @@ pub fn encode_push_promise_end_headers_test() {
 
 pub fn encode_push_promise_padded_test() {
   // RFC 9113 Section 6.6: PADDED (0x08) flag with 2 bytes of padding
-  frame.encode_push_promise(
+  h2_frame.encode_push_promise(
     stream_id: 1,
     end_headers: False,
     promised_stream_id: 2,
@@ -259,7 +259,7 @@ pub fn encode_push_promise_padded_test() {
 
 pub fn encode_push_promise_padded_end_headers_test() {
   // RFC 9113 Section 6.6: Both PADDED (0x08) and END_HEADERS (0x04)
-  frame.encode_push_promise(
+  h2_frame.encode_push_promise(
     stream_id: 1,
     end_headers: True,
     promised_stream_id: 2,
@@ -276,7 +276,7 @@ pub fn encode_push_promise_padded_end_headers_test() {
 
 pub fn encode_push_promise_padded_zero_test() {
   // RFC 9113 Section 6.6: PADDED flag with pad_length=0 is valid
-  frame.encode_push_promise(
+  h2_frame.encode_push_promise(
     stream_id: 1,
     end_headers: False,
     promised_stream_id: 2,
@@ -293,7 +293,7 @@ pub fn encode_push_promise_padded_zero_test() {
 
 pub fn encode_push_promise_empty_fragment_test() {
   // RFC 9113 Section 6.6: PUSH_PROMISE with empty fragment is valid
-  frame.encode_push_promise(
+  h2_frame.encode_push_promise(
     stream_id: 1,
     end_headers: False,
     promised_stream_id: 2,
@@ -310,7 +310,7 @@ pub fn encode_push_promise_empty_fragment_test() {
 
 pub fn encode_push_promise_stream_id_zero_test() {
   // RFC 9113 Section 6.6: PUSH_PROMISE MUST be associated with a stream
-  frame.encode_push_promise(
+  h2_frame.encode_push_promise(
     stream_id: 0,
     end_headers: False,
     promised_stream_id: 2,
@@ -322,32 +322,32 @@ pub fn encode_push_promise_stream_id_zero_test() {
 
 pub fn encode_push_promise_padding_negative_test() {
   // Padding must be non-negative
-  frame.encode_push_promise(
+  h2_frame.encode_push_promise(
     stream_id: 1,
     end_headers: False,
     promised_stream_id: 2,
     data: <<"abc":utf8>>,
     padding: Some(-1),
   )
-  |> should.equal(Error(frame.InvalidPadding))
+  |> should.equal(Error(h2_frame.InvalidPadding))
 }
 
 pub fn encode_push_promise_padding_exceeds_byte_test() {
   // RFC 9113 Section 6.6: Pad Length is a single 8-bit field; max value is 255
-  frame.encode_push_promise(
+  h2_frame.encode_push_promise(
     stream_id: 1,
     end_headers: False,
     promised_stream_id: 2,
     data: <<"abc":utf8>>,
     padding: Some(256),
   )
-  |> should.equal(Error(frame.InvalidPadding))
+  |> should.equal(Error(h2_frame.InvalidPadding))
 }
 
 pub fn encode_push_promise_roundtrip_test() {
   // Encode then parse should produce the same values
   let assert Ok(encoded) =
-    frame.encode_push_promise(
+    h2_frame.encode_push_promise(
       stream_id: 5,
       end_headers: True,
       promised_stream_id: 4,
@@ -355,11 +355,11 @@ pub fn encode_push_promise_roundtrip_test() {
       padding: None,
     )
   let assert Ok(#(h, rest)) = header.parse_header(encoded)
-  frame.parse_payload(h, rest)
+  h2_frame.parse_payload(h, rest)
   |> should.equal(
     Ok(
       #(
-        frame.PushPromise(end_headers: True, promised_stream_id: 4, data: <<
+        h2_frame.PushPromise(end_headers: True, promised_stream_id: 4, data: <<
           "test":utf8,
         >>),
         <<>>,
@@ -371,7 +371,7 @@ pub fn encode_push_promise_roundtrip_test() {
 pub fn encode_push_promise_padded_roundtrip_test() {
   // Padded encode then parse should strip padding and recover data
   let assert Ok(encoded) =
-    frame.encode_push_promise(
+    h2_frame.encode_push_promise(
       stream_id: 3,
       end_headers: False,
       promised_stream_id: 6,
@@ -379,11 +379,11 @@ pub fn encode_push_promise_padded_roundtrip_test() {
       padding: Some(3),
     )
   let assert Ok(#(h, rest)) = header.parse_header(encoded)
-  frame.parse_payload(h, rest)
+  h2_frame.parse_payload(h, rest)
   |> should.equal(
     Ok(
       #(
-        frame.PushPromise(end_headers: False, promised_stream_id: 6, data: <<
+        h2_frame.PushPromise(end_headers: False, promised_stream_id: 6, data: <<
           "hpack":utf8,
         >>),
         <<>>,

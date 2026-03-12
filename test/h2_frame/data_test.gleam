@@ -1,8 +1,9 @@
 import gleam/option.{None, Some}
 import gleeunit/should
-import h2o/frame
-import h2o/frame/error
-import h2o/frame/header.{FrameHeader}
+import h2_frame
+import h2_frame/error
+import h2_frame/header.{FrameHeader}
+
 
 pub fn parse_data_test() {
   // RFC 9113 Section 6.1: DATA frame with simple payload
@@ -10,9 +11,9 @@ pub fn parse_data_test() {
     5:size(24), 0:size(8), 0:size(8), 0:size(1), 1:size(31), "hello":utf8,
   >>
   let assert Ok(#(h, rest)) = header.parse_header(data)
-  frame.parse_payload(h, rest)
+  h2_frame.parse_payload(h, rest)
   |> should.equal(
-    Ok(#(frame.Data(end_stream: False, data: <<"hello":utf8>>), <<>>)),
+    Ok(#(h2_frame.Data(end_stream: False, data: <<"hello":utf8>>), <<>>)),
   )
 }
 
@@ -22,9 +23,9 @@ pub fn parse_data_end_stream_test() {
     3:size(24), 0:size(8), 1:size(8), 0:size(1), 1:size(31), "bye":utf8,
   >>
   let assert Ok(#(h, rest)) = header.parse_header(data)
-  frame.parse_payload(h, rest)
+  h2_frame.parse_payload(h, rest)
   |> should.equal(
-    Ok(#(frame.Data(end_stream: True, data: <<"bye":utf8>>), <<>>)),
+    Ok(#(h2_frame.Data(end_stream: True, data: <<"bye":utf8>>), <<>>)),
   )
 }
 
@@ -37,9 +38,9 @@ pub fn parse_data_padded_test() {
     "hi":utf8, 0, 0, 0,
   >>
   let assert Ok(#(h, rest)) = header.parse_header(data)
-  frame.parse_payload(h, rest)
+  h2_frame.parse_payload(h, rest)
   |> should.equal(
-    Ok(#(frame.Data(end_stream: False, data: <<"hi":utf8>>), <<>>)),
+    Ok(#(h2_frame.Data(end_stream: False, data: <<"hi":utf8>>), <<>>)),
   )
 }
 
@@ -50,9 +51,9 @@ pub fn parse_data_padded_end_stream_test() {
     "hi":utf8, 0, 0, 0,
   >>
   let assert Ok(#(h, rest)) = header.parse_header(data)
-  frame.parse_payload(h, rest)
+  h2_frame.parse_payload(h, rest)
   |> should.equal(
-    Ok(#(frame.Data(end_stream: True, data: <<"hi":utf8>>), <<>>)),
+    Ok(#(h2_frame.Data(end_stream: True, data: <<"hi":utf8>>), <<>>)),
   )
 }
 
@@ -63,9 +64,9 @@ pub fn parse_data_padded_zero_padding_test() {
     "abc":utf8,
   >>
   let assert Ok(#(h, rest)) = header.parse_header(data)
-  frame.parse_payload(h, rest)
+  h2_frame.parse_payload(h, rest)
   |> should.equal(
-    Ok(#(frame.Data(end_stream: False, data: <<"abc":utf8>>), <<>>)),
+    Ok(#(h2_frame.Data(end_stream: False, data: <<"abc":utf8>>), <<>>)),
   )
 }
 
@@ -76,8 +77,8 @@ pub fn parse_data_stream_id_zero_test() {
     5:size(24), 0:size(8), 0:size(8), 0:size(1), 0:size(31), "hello":utf8,
   >>
   let assert Ok(#(h, rest)) = header.parse_header(data)
-  frame.parse_payload(h, rest)
-  |> should.equal(Error(frame.ConnectionError(error.ProtocolError)))
+  h2_frame.parse_payload(h, rest)
+  |> should.equal(Error(h2_frame.ConnectionError(error.ProtocolError)))
 }
 
 pub fn parse_data_padding_exceeds_payload_test() {
@@ -89,8 +90,8 @@ pub fn parse_data_padding_exceeds_payload_test() {
     0,
   >>
   let assert Ok(#(h, rest)) = header.parse_header(data)
-  frame.parse_payload(h, rest)
-  |> should.equal(Error(frame.ConnectionError(error.ProtocolError)))
+  h2_frame.parse_payload(h, rest)
+  |> should.equal(Error(h2_frame.ConnectionError(error.ProtocolError)))
 }
 
 pub fn parse_data_padding_exceeds_payload_larger_test() {
@@ -100,16 +101,16 @@ pub fn parse_data_padding_exceeds_payload_larger_test() {
     3:size(24), 0:size(8), 8:size(8), 0:size(1), 1:size(31), 10:size(8), 0, 0,
   >>
   let assert Ok(#(h, rest)) = header.parse_header(data)
-  frame.parse_payload(h, rest)
-  |> should.equal(Error(frame.ConnectionError(error.ProtocolError)))
+  h2_frame.parse_payload(h, rest)
+  |> should.equal(Error(h2_frame.ConnectionError(error.ProtocolError)))
 }
 
 pub fn parse_data_empty_payload_test() {
   // RFC 9113 Section 6.1: DATA frame with zero-length payload is valid
   let data = <<0:size(24), 0:size(8), 0:size(8), 0:size(1), 1:size(31)>>
   let assert Ok(#(h, rest)) = header.parse_header(data)
-  frame.parse_payload(h, rest)
-  |> should.equal(Ok(#(frame.Data(end_stream: False, data: <<>>), <<>>)))
+  h2_frame.parse_payload(h, rest)
+  |> should.equal(Ok(#(h2_frame.Data(end_stream: False, data: <<>>), <<>>)))
 }
 
 pub fn parse_data_unknown_flags_ignored_test() {
@@ -121,9 +122,9 @@ pub fn parse_data_unknown_flags_ignored_test() {
     "hi":utf8, 0, 0, 0,
   >>
   let assert Ok(#(h, rest)) = header.parse_header(data)
-  frame.parse_payload(h, rest)
+  h2_frame.parse_payload(h, rest)
   |> should.equal(
-    Ok(#(frame.Data(end_stream: True, data: <<"hi":utf8>>), <<>>)),
+    Ok(#(h2_frame.Data(end_stream: True, data: <<"hi":utf8>>), <<>>)),
   )
 }
 
@@ -133,8 +134,8 @@ pub fn parse_data_truncated_payload_test() {
     10:size(24), 0:size(8), 0:size(8), 0:size(1), 1:size(31), "short":utf8,
   >>
   let assert Ok(#(h, rest)) = header.parse_header(data)
-  frame.parse_payload(h, rest)
-  |> should.equal(Error(frame.IncompletePayload))
+  h2_frame.parse_payload(h, rest)
+  |> should.equal(Error(h2_frame.IncompletePayload))
 }
 
 pub fn parse_data_with_trailing_data_test() {
@@ -144,9 +145,9 @@ pub fn parse_data_with_trailing_data_test() {
     99,
   >>
   let assert Ok(#(h, rest)) = header.parse_header(data)
-  frame.parse_payload(h, rest)
+  h2_frame.parse_payload(h, rest)
   |> should.equal(
-    Ok(#(frame.Data(end_stream: False, data: <<"hello":utf8>>), <<99, 99>>)),
+    Ok(#(h2_frame.Data(end_stream: False, data: <<"hello":utf8>>), <<99, 99>>)),
   )
 }
 
@@ -155,8 +156,8 @@ pub fn parse_data_padded_empty_payload_test() {
   // (not even the pad_length byte)
   let data = <<5:size(24), 0:size(8), 8:size(8), 0:size(1), 1:size(31)>>
   let assert Ok(#(h, rest)) = header.parse_header(data)
-  frame.parse_payload(h, rest)
-  |> should.equal(Error(frame.IncompletePayload))
+  h2_frame.parse_payload(h, rest)
+  |> should.equal(Error(h2_frame.IncompletePayload))
 }
 
 pub fn parse_data_padded_truncated_payload_test() {
@@ -166,23 +167,23 @@ pub fn parse_data_padded_truncated_payload_test() {
     10:size(24), 0:size(8), 8:size(8), 0:size(1), 1:size(31), 5:size(8), 1, 2, 3,
   >>
   let assert Ok(#(h, rest)) = header.parse_header(data)
-  frame.parse_payload(h, rest)
-  |> should.equal(Error(frame.IncompletePayload))
+  h2_frame.parse_payload(h, rest)
+  |> should.equal(Error(h2_frame.IncompletePayload))
 }
 
 // --- Convenience parse() tests ---
 
 pub fn parse_convenience_test() {
-  // frame.parse does both header parsing and payload parsing in one call
+  // h2_frame.parse does both header parsing and payload parsing in one call
   let data = <<
     5:size(24), 0:size(8), 0:size(8), 0:size(1), 1:size(31), "hello":utf8,
   >>
-  frame.parse(data)
+  h2_frame.parse(data)
   |> should.equal(
     Ok(
       #(
         FrameHeader(length: 5, frame_type: header.Data, flags: 0, stream_id: 1),
-        frame.Data(end_stream: False, data: <<"hello":utf8>>),
+        h2_frame.Data(end_stream: False, data: <<"hello":utf8>>),
         <<>>,
       ),
     ),
@@ -194,12 +195,12 @@ pub fn parse_convenience_with_trailing_data_test() {
   let data = <<
     3:size(24), 0:size(8), 0:size(8), 0:size(1), 1:size(31), "abc":utf8, 99, 99,
   >>
-  frame.parse(data)
+  h2_frame.parse(data)
   |> should.equal(
     Ok(
       #(
         FrameHeader(length: 3, frame_type: header.Data, flags: 0, stream_id: 1),
-        frame.Data(end_stream: False, data: <<"abc":utf8>>),
+        h2_frame.Data(end_stream: False, data: <<"abc":utf8>>),
         <<99, 99>>,
       ),
     ),
@@ -211,22 +212,22 @@ pub fn parse_convenience_payload_error_test() {
   let data = <<
     5:size(24), 0:size(8), 0:size(8), 0:size(1), 0:size(31), "hello":utf8,
   >>
-  frame.parse(data)
-  |> should.equal(Error(frame.ConnectionError(error.ProtocolError)))
+  h2_frame.parse(data)
+  |> should.equal(Error(h2_frame.ConnectionError(error.ProtocolError)))
 }
 
 pub fn parse_convenience_incomplete_header_test() {
   // Too few bytes for even the 9-byte header
   let data = <<0, 0, 5, 0>>
-  frame.parse(data)
-  |> should.equal(Error(frame.HeaderError(header.IncompleteHeader)))
+  h2_frame.parse(data)
+  |> should.equal(Error(h2_frame.HeaderError(header.IncompleteHeader)))
 }
 
 // --- Encode tests ---
 
 pub fn encode_data_test() {
   // RFC 9113 Section 6.1: Basic DATA frame encoding
-  frame.encode_data(
+  h2_frame.encode_data(
     stream_id: 1,
     end_stream: False,
     data: <<"hello":utf8>>,
@@ -239,7 +240,7 @@ pub fn encode_data_test() {
 
 pub fn encode_data_end_stream_test() {
   // RFC 9113 Section 6.1: END_STREAM (0x01) flag set
-  frame.encode_data(
+  h2_frame.encode_data(
     stream_id: 1,
     end_stream: True,
     data: <<"bye":utf8>>,
@@ -252,7 +253,7 @@ pub fn encode_data_end_stream_test() {
 
 pub fn encode_data_padded_test() {
   // RFC 9113 Section 6.1: PADDED (0x08) flag with 3 bytes of padding
-  frame.encode_data(
+  h2_frame.encode_data(
     stream_id: 1,
     end_stream: False,
     data: <<"hi":utf8>>,
@@ -268,7 +269,7 @@ pub fn encode_data_padded_test() {
 
 pub fn encode_data_padded_end_stream_test() {
   // RFC 9113 Section 6.1: Both PADDED (0x08) and END_STREAM (0x01)
-  frame.encode_data(
+  h2_frame.encode_data(
     stream_id: 1,
     end_stream: True,
     data: <<"hi":utf8>>,
@@ -285,7 +286,7 @@ pub fn encode_data_padded_end_stream_test() {
 pub fn encode_data_padded_zero_test() {
   // RFC 9113 Section 6.1: PADDED flag with pad_length=0 is valid
   // Still sets PADDED flag and includes pad_length byte
-  frame.encode_data(
+  h2_frame.encode_data(
     stream_id: 1,
     end_stream: False,
     data: <<"abc":utf8>>,
@@ -301,7 +302,7 @@ pub fn encode_data_padded_zero_test() {
 
 pub fn encode_data_empty_payload_test() {
   // RFC 9113 Section 6.1: DATA frame with zero-length data is valid
-  frame.encode_data(stream_id: 1, end_stream: False, data: <<>>, padding: None)
+  h2_frame.encode_data(stream_id: 1, end_stream: False, data: <<>>, padding: None)
   |> should.equal(
     Ok(<<0:size(24), 0:size(8), 0:size(8), 0:size(1), 1:size(31)>>),
   )
@@ -309,7 +310,7 @@ pub fn encode_data_empty_payload_test() {
 
 pub fn encode_data_stream_id_zero_test() {
   // RFC 9113 Section 6.1: DATA frames MUST be associated with a stream
-  frame.encode_data(
+  h2_frame.encode_data(
     stream_id: 0,
     end_stream: False,
     data: <<"hello":utf8>>,
@@ -320,54 +321,54 @@ pub fn encode_data_stream_id_zero_test() {
 
 pub fn encode_data_padding_negative_test() {
   // Padding must be non-negative
-  frame.encode_data(
+  h2_frame.encode_data(
     stream_id: 1,
     end_stream: False,
     data: <<"hello":utf8>>,
     padding: Some(-1),
   )
-  |> should.equal(Error(frame.InvalidPadding))
+  |> should.equal(Error(h2_frame.InvalidPadding))
 }
 
 pub fn encode_data_padding_exceeds_byte_test() {
   // RFC 9113 Section 6.1: Pad Length is a single 8-bit field; max value is 255
-  frame.encode_data(
+  h2_frame.encode_data(
     stream_id: 1,
     end_stream: False,
     data: <<"hello":utf8>>,
     padding: Some(256),
   )
-  |> should.equal(Error(frame.InvalidPadding))
+  |> should.equal(Error(h2_frame.InvalidPadding))
 }
 
 pub fn encode_data_roundtrip_test() {
   // Encode then parse should produce the same values
   let assert Ok(encoded) =
-    frame.encode_data(
+    h2_frame.encode_data(
       stream_id: 5,
       end_stream: True,
       data: <<"test":utf8>>,
       padding: None,
     )
   let assert Ok(#(h, rest)) = header.parse_header(encoded)
-  frame.parse_payload(h, rest)
+  h2_frame.parse_payload(h, rest)
   |> should.equal(
-    Ok(#(frame.Data(end_stream: True, data: <<"test":utf8>>), <<>>)),
+    Ok(#(h2_frame.Data(end_stream: True, data: <<"test":utf8>>), <<>>)),
   )
 }
 
 pub fn encode_data_padded_roundtrip_test() {
   // Padded encode then parse should strip padding and recover data
   let assert Ok(encoded) =
-    frame.encode_data(
+    h2_frame.encode_data(
       stream_id: 3,
       end_stream: False,
       data: <<"abc":utf8>>,
       padding: Some(5),
     )
   let assert Ok(#(h, rest)) = header.parse_header(encoded)
-  frame.parse_payload(h, rest)
+  h2_frame.parse_payload(h, rest)
   |> should.equal(
-    Ok(#(frame.Data(end_stream: False, data: <<"abc":utf8>>), <<>>)),
+    Ok(#(h2_frame.Data(end_stream: False, data: <<"abc":utf8>>), <<>>)),
   )
 }

@@ -1,7 +1,7 @@
 import gleeunit/should
-import h2o/frame
-import h2o/frame/error
-import h2o/frame/header
+import h2_frame
+import h2_frame/error
+import h2_frame/header
 
 pub fn parse_continuation_test() {
   // RFC 9113 Section 6.10: Basic CONTINUATION frame with fragment
@@ -9,9 +9,9 @@ pub fn parse_continuation_test() {
     5:size(24), 9:size(8), 0:size(8), 0:size(1), 1:size(31), "hello":utf8,
   >>
   let assert Ok(#(h, rest)) = header.parse_header(data)
-  frame.parse_payload(h, rest)
+  h2_frame.parse_payload(h, rest)
   |> should.equal(
-    Ok(#(frame.Continuation(end_headers: False, data: <<"hello":utf8>>), <<>>)),
+    Ok(#(h2_frame.Continuation(end_headers: False, data: <<"hello":utf8>>), <<>>)),
   )
 }
 
@@ -21,9 +21,9 @@ pub fn parse_continuation_end_headers_test() {
     3:size(24), 9:size(8), 4:size(8), 0:size(1), 1:size(31), "abc":utf8,
   >>
   let assert Ok(#(h, rest)) = header.parse_header(data)
-  frame.parse_payload(h, rest)
+  h2_frame.parse_payload(h, rest)
   |> should.equal(
-    Ok(#(frame.Continuation(end_headers: True, data: <<"abc":utf8>>), <<>>)),
+    Ok(#(h2_frame.Continuation(end_headers: True, data: <<"abc":utf8>>), <<>>)),
   )
 }
 
@@ -31,9 +31,9 @@ pub fn parse_continuation_empty_fragment_test() {
   // RFC 9113 Section 6.10: Empty fragment is valid
   let data = <<0:size(24), 9:size(8), 0:size(8), 0:size(1), 1:size(31)>>
   let assert Ok(#(h, rest)) = header.parse_header(data)
-  frame.parse_payload(h, rest)
+  h2_frame.parse_payload(h, rest)
   |> should.equal(
-    Ok(#(frame.Continuation(end_headers: False, data: <<>>), <<>>)),
+    Ok(#(h2_frame.Continuation(end_headers: False, data: <<>>), <<>>)),
   )
 }
 
@@ -43,8 +43,8 @@ pub fn parse_continuation_stream_id_zero_test() {
     3:size(24), 9:size(8), 0:size(8), 0:size(1), 0:size(31), "abc":utf8,
   >>
   let assert Ok(#(h, rest)) = header.parse_header(data)
-  frame.parse_payload(h, rest)
-  |> should.equal(Error(frame.ConnectionError(error.ProtocolError)))
+  h2_frame.parse_payload(h, rest)
+  |> should.equal(Error(h2_frame.ConnectionError(error.ProtocolError)))
 }
 
 pub fn parse_continuation_unknown_flags_ignored_test() {
@@ -54,9 +54,9 @@ pub fn parse_continuation_unknown_flags_ignored_test() {
     3:size(24), 9:size(8), 0xFB:size(8), 0:size(1), 1:size(31), "abc":utf8,
   >>
   let assert Ok(#(h, rest)) = header.parse_header(data)
-  frame.parse_payload(h, rest)
+  h2_frame.parse_payload(h, rest)
   |> should.equal(
-    Ok(#(frame.Continuation(end_headers: False, data: <<"abc":utf8>>), <<>>)),
+    Ok(#(h2_frame.Continuation(end_headers: False, data: <<"abc":utf8>>), <<>>)),
   )
 }
 
@@ -66,8 +66,8 @@ pub fn parse_continuation_truncated_payload_test() {
     10:size(24), 9:size(8), 0:size(8), 0:size(1), 1:size(31), "short":utf8,
   >>
   let assert Ok(#(h, rest)) = header.parse_header(data)
-  frame.parse_payload(h, rest)
-  |> should.equal(Error(frame.IncompletePayload))
+  h2_frame.parse_payload(h, rest)
+  |> should.equal(Error(h2_frame.IncompletePayload))
 }
 
 pub fn parse_continuation_with_trailing_data_test() {
@@ -76,10 +76,10 @@ pub fn parse_continuation_with_trailing_data_test() {
     3:size(24), 9:size(8), 0:size(8), 0:size(1), 1:size(31), "abc":utf8, 99, 99,
   >>
   let assert Ok(#(h, rest)) = header.parse_header(data)
-  frame.parse_payload(h, rest)
+  h2_frame.parse_payload(h, rest)
   |> should.equal(
     Ok(
-      #(frame.Continuation(end_headers: False, data: <<"abc":utf8>>), <<99, 99>>),
+      #(h2_frame.Continuation(end_headers: False, data: <<"abc":utf8>>), <<99, 99>>),
     ),
   )
 }
@@ -88,7 +88,7 @@ pub fn parse_continuation_with_trailing_data_test() {
 
 pub fn encode_continuation_test() {
   // RFC 9113 Section 6.10: Basic CONTINUATION frame with fragment
-  frame.encode_continuation(stream_id: 1, end_headers: False, data: <<
+  h2_frame.encode_continuation(stream_id: 1, end_headers: False, data: <<
     "hello":utf8,
   >>)
   |> should.equal(
@@ -98,7 +98,7 @@ pub fn encode_continuation_test() {
 
 pub fn encode_continuation_end_headers_test() {
   // RFC 9113 Section 6.10: END_HEADERS (0x04) flag signals last continuation
-  frame.encode_continuation(stream_id: 1, end_headers: True, data: <<
+  h2_frame.encode_continuation(stream_id: 1, end_headers: True, data: <<
     "abc":utf8,
   >>)
   |> should.equal(
@@ -108,7 +108,7 @@ pub fn encode_continuation_end_headers_test() {
 
 pub fn encode_continuation_empty_fragment_test() {
   // RFC 9113 Section 6.10: Empty fragment is valid
-  frame.encode_continuation(stream_id: 1, end_headers: False, data: <<>>)
+  h2_frame.encode_continuation(stream_id: 1, end_headers: False, data: <<>>)
   |> should.equal(
     Ok(<<0:size(24), 9:size(8), 0:size(8), 0:size(1), 1:size(31)>>),
   )
@@ -116,7 +116,7 @@ pub fn encode_continuation_empty_fragment_test() {
 
 pub fn encode_continuation_stream_id_zero_test() {
   // RFC 9113 Section 6.10: CONTINUATION MUST be associated with a stream
-  frame.encode_continuation(stream_id: 0, end_headers: False, data: <<
+  h2_frame.encode_continuation(stream_id: 0, end_headers: False, data: <<
     "abc":utf8,
   >>)
   |> should.be_error()
@@ -125,12 +125,12 @@ pub fn encode_continuation_stream_id_zero_test() {
 pub fn encode_continuation_roundtrip_test() {
   // Encode then parse should produce the same values
   let assert Ok(encoded) =
-    frame.encode_continuation(stream_id: 3, end_headers: True, data: <<
+    h2_frame.encode_continuation(stream_id: 3, end_headers: True, data: <<
       "hpack":utf8,
     >>)
   let assert Ok(#(h, rest)) = header.parse_header(encoded)
-  frame.parse_payload(h, rest)
+  h2_frame.parse_payload(h, rest)
   |> should.equal(
-    Ok(#(frame.Continuation(end_headers: True, data: <<"hpack":utf8>>), <<>>)),
+    Ok(#(h2_frame.Continuation(end_headers: True, data: <<"hpack":utf8>>), <<>>)),
   )
 }

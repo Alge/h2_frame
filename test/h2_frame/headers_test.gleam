@@ -1,8 +1,8 @@
 import gleam/option.{None, Some}
 import gleeunit/should
-import h2o/frame
-import h2o/frame/error
-import h2o/frame/header
+import h2_frame
+import h2_frame/error
+import h2_frame/header
 
 pub fn parse_headers_test() {
   // RFC 9113 Section 6.2: Basic HEADERS frame with fragment only
@@ -10,11 +10,11 @@ pub fn parse_headers_test() {
     5:size(24), 1:size(8), 0:size(8), 0:size(1), 1:size(31), "hello":utf8,
   >>
   let assert Ok(#(h, rest)) = header.parse_header(data)
-  frame.parse_payload(h, rest)
+  h2_frame.parse_payload(h, rest)
   |> should.equal(
     Ok(
       #(
-        frame.Headers(
+        h2_frame.Headers(
           end_stream: False,
           end_headers: False,
           priority: None,
@@ -32,11 +32,11 @@ pub fn parse_headers_end_stream_test() {
     3:size(24), 1:size(8), 1:size(8), 0:size(1), 1:size(31), "abc":utf8,
   >>
   let assert Ok(#(h, rest)) = header.parse_header(data)
-  frame.parse_payload(h, rest)
+  h2_frame.parse_payload(h, rest)
   |> should.equal(
     Ok(
       #(
-        frame.Headers(
+        h2_frame.Headers(
           end_stream: True,
           end_headers: False,
           priority: None,
@@ -54,11 +54,11 @@ pub fn parse_headers_end_headers_test() {
     3:size(24), 1:size(8), 4:size(8), 0:size(1), 1:size(31), "abc":utf8,
   >>
   let assert Ok(#(h, rest)) = header.parse_header(data)
-  frame.parse_payload(h, rest)
+  h2_frame.parse_payload(h, rest)
   |> should.equal(
     Ok(
       #(
-        frame.Headers(
+        h2_frame.Headers(
           end_stream: False,
           end_headers: True,
           priority: None,
@@ -76,11 +76,11 @@ pub fn parse_headers_end_stream_and_end_headers_test() {
     3:size(24), 1:size(8), 5:size(8), 0:size(1), 1:size(31), "abc":utf8,
   >>
   let assert Ok(#(h, rest)) = header.parse_header(data)
-  frame.parse_payload(h, rest)
+  h2_frame.parse_payload(h, rest)
   |> should.equal(
     Ok(
       #(
-        frame.Headers(
+        h2_frame.Headers(
           end_stream: True,
           end_headers: True,
           priority: None,
@@ -100,14 +100,14 @@ pub fn parse_headers_priority_test() {
     3:size(31), 15:size(8), "ab":utf8,
   >>
   let assert Ok(#(h, rest)) = header.parse_header(data)
-  frame.parse_payload(h, rest)
+  h2_frame.parse_payload(h, rest)
   |> should.equal(
     Ok(
       #(
-        frame.Headers(
+        h2_frame.Headers(
           end_stream: False,
           end_headers: False,
-          priority: Some(frame.StreamPriority(
+          priority: Some(h2_frame.StreamPriority(
             exclusive: False,
             stream_dependency: 3,
             weight: 15,
@@ -127,14 +127,14 @@ pub fn parse_headers_priority_exclusive_test() {
     5:size(31), 255:size(8), "ab":utf8,
   >>
   let assert Ok(#(h, rest)) = header.parse_header(data)
-  frame.parse_payload(h, rest)
+  h2_frame.parse_payload(h, rest)
   |> should.equal(
     Ok(
       #(
-        frame.Headers(
+        h2_frame.Headers(
           end_stream: False,
           end_headers: False,
-          priority: Some(frame.StreamPriority(
+          priority: Some(h2_frame.StreamPriority(
             exclusive: True,
             stream_dependency: 5,
             weight: 255,
@@ -155,11 +155,11 @@ pub fn parse_headers_padded_test() {
     "abc":utf8, 0, 0,
   >>
   let assert Ok(#(h, rest)) = header.parse_header(data)
-  frame.parse_payload(h, rest)
+  h2_frame.parse_payload(h, rest)
   |> should.equal(
     Ok(
       #(
-        frame.Headers(
+        h2_frame.Headers(
           end_stream: False,
           end_headers: False,
           priority: None,
@@ -180,14 +180,14 @@ pub fn parse_headers_padded_and_priority_test() {
     1:size(1), 7:size(31), 100:size(8), "ab":utf8, 0, 0,
   >>
   let assert Ok(#(h, rest)) = header.parse_header(data)
-  frame.parse_payload(h, rest)
+  h2_frame.parse_payload(h, rest)
   |> should.equal(
     Ok(
       #(
-        frame.Headers(
+        h2_frame.Headers(
           end_stream: False,
           end_headers: False,
-          priority: Some(frame.StreamPriority(
+          priority: Some(h2_frame.StreamPriority(
             exclusive: True,
             stream_dependency: 7,
             weight: 100,
@@ -208,14 +208,14 @@ pub fn parse_headers_all_flags_test() {
     0:size(1), 0:size(31), 0:size(8), "x":utf8, 0,
   >>
   let assert Ok(#(h, rest)) = header.parse_header(data)
-  frame.parse_payload(h, rest)
+  h2_frame.parse_payload(h, rest)
   |> should.equal(
     Ok(
       #(
-        frame.Headers(
+        h2_frame.Headers(
           end_stream: True,
           end_headers: True,
-          priority: Some(frame.StreamPriority(
+          priority: Some(h2_frame.StreamPriority(
             exclusive: False,
             stream_dependency: 0,
             weight: 0,
@@ -234,8 +234,8 @@ pub fn parse_headers_stream_id_zero_test() {
     3:size(24), 1:size(8), 0:size(8), 0:size(1), 0:size(31), "abc":utf8,
   >>
   let assert Ok(#(h, rest)) = header.parse_header(data)
-  frame.parse_payload(h, rest)
-  |> should.equal(Error(frame.ConnectionError(error.ProtocolError)))
+  h2_frame.parse_payload(h, rest)
+  |> should.equal(Error(h2_frame.ConnectionError(error.ProtocolError)))
 }
 
 pub fn parse_headers_padding_exceeds_payload_test() {
@@ -245,8 +245,8 @@ pub fn parse_headers_padding_exceeds_payload_test() {
     3:size(24), 1:size(8), 8:size(8), 0:size(1), 1:size(31), 3:size(8), 0, 0,
   >>
   let assert Ok(#(h, rest)) = header.parse_header(data)
-  frame.parse_payload(h, rest)
-  |> should.equal(Error(frame.ConnectionError(error.ProtocolError)))
+  h2_frame.parse_payload(h, rest)
+  |> should.equal(Error(h2_frame.ConnectionError(error.ProtocolError)))
 }
 
 pub fn parse_headers_padded_priority_padding_exceeds_test() {
@@ -257,8 +257,8 @@ pub fn parse_headers_padded_priority_padding_exceeds_test() {
     0:size(1), 0:size(31), 0:size(8), 0,
   >>
   let assert Ok(#(h, rest)) = header.parse_header(data)
-  frame.parse_payload(h, rest)
-  |> should.equal(Error(frame.ConnectionError(error.ProtocolError)))
+  h2_frame.parse_payload(h, rest)
+  |> should.equal(Error(h2_frame.ConnectionError(error.ProtocolError)))
 }
 
 pub fn parse_headers_priority_truncated_test() {
@@ -268,19 +268,19 @@ pub fn parse_headers_priority_truncated_test() {
     3:size(24), 1:size(8), 0x20:size(8), 0:size(1), 1:size(31), 0, 0, 0,
   >>
   let assert Ok(#(h, rest)) = header.parse_header(data)
-  frame.parse_payload(h, rest)
-  |> should.equal(Error(frame.IncompletePayload))
+  h2_frame.parse_payload(h, rest)
+  |> should.equal(Error(h2_frame.IncompletePayload))
 }
 
 pub fn parse_headers_empty_fragment_test() {
   // RFC 9113 Section 6.2: HEADERS frame with empty fragment is valid
   let data = <<0:size(24), 1:size(8), 0:size(8), 0:size(1), 1:size(31)>>
   let assert Ok(#(h, rest)) = header.parse_header(data)
-  frame.parse_payload(h, rest)
+  h2_frame.parse_payload(h, rest)
   |> should.equal(
     Ok(
       #(
-        frame.Headers(
+        h2_frame.Headers(
           end_stream: False,
           end_headers: False,
           priority: None,
@@ -299,11 +299,11 @@ pub fn parse_headers_unknown_flags_ignored_test() {
     3:size(24), 1:size(8), 0xD2:size(8), 0:size(1), 1:size(31), "abc":utf8,
   >>
   let assert Ok(#(h, rest)) = header.parse_header(data)
-  frame.parse_payload(h, rest)
+  h2_frame.parse_payload(h, rest)
   |> should.equal(
     Ok(
       #(
-        frame.Headers(
+        h2_frame.Headers(
           end_stream: False,
           end_headers: False,
           priority: None,
@@ -321,8 +321,8 @@ pub fn parse_headers_truncated_payload_test() {
     10:size(24), 1:size(8), 0:size(8), 0:size(1), 1:size(31), "short":utf8,
   >>
   let assert Ok(#(h, rest)) = header.parse_header(data)
-  frame.parse_payload(h, rest)
-  |> should.equal(Error(frame.IncompletePayload))
+  h2_frame.parse_payload(h, rest)
+  |> should.equal(Error(h2_frame.IncompletePayload))
 }
 
 pub fn parse_headers_with_trailing_data_test() {
@@ -331,11 +331,11 @@ pub fn parse_headers_with_trailing_data_test() {
     3:size(24), 1:size(8), 0:size(8), 0:size(1), 1:size(31), "abc":utf8, 99, 99,
   >>
   let assert Ok(#(h, rest)) = header.parse_header(data)
-  frame.parse_payload(h, rest)
+  h2_frame.parse_payload(h, rest)
   |> should.equal(
     Ok(
       #(
-        frame.Headers(
+        h2_frame.Headers(
           end_stream: False,
           end_headers: False,
           priority: None,
@@ -351,15 +351,15 @@ pub fn parse_headers_padded_empty_payload_test() {
   // RFC 9113 Section 6.2: PADDED flag set but no payload bytes at all
   let data = <<5:size(24), 1:size(8), 8:size(8), 0:size(1), 1:size(31)>>
   let assert Ok(#(h, rest)) = header.parse_header(data)
-  frame.parse_payload(h, rest)
-  |> should.equal(Error(frame.IncompletePayload))
+  h2_frame.parse_payload(h, rest)
+  |> should.equal(Error(h2_frame.IncompletePayload))
 }
 
 // --- Encode tests ---
 
 pub fn encode_headers_test() {
   // RFC 9113 Section 6.2: Basic HEADERS frame with fragment only
-  frame.encode_headers(
+  h2_frame.encode_headers(
     stream_id: 1,
     end_stream: False,
     end_headers: False,
@@ -374,7 +374,7 @@ pub fn encode_headers_test() {
 
 pub fn encode_headers_end_stream_test() {
   // RFC 9113 Section 6.2: END_STREAM (0x01) flag
-  frame.encode_headers(
+  h2_frame.encode_headers(
     stream_id: 1,
     end_stream: True,
     end_headers: False,
@@ -389,7 +389,7 @@ pub fn encode_headers_end_stream_test() {
 
 pub fn encode_headers_end_headers_test() {
   // RFC 9113 Section 6.2: END_HEADERS (0x04) flag
-  frame.encode_headers(
+  h2_frame.encode_headers(
     stream_id: 1,
     end_stream: False,
     end_headers: True,
@@ -404,7 +404,7 @@ pub fn encode_headers_end_headers_test() {
 
 pub fn encode_headers_end_stream_and_end_headers_test() {
   // RFC 9113 Section 6.2: Both END_STREAM (0x01) and END_HEADERS (0x04)
-  frame.encode_headers(
+  h2_frame.encode_headers(
     stream_id: 1,
     end_stream: True,
     end_headers: True,
@@ -419,11 +419,11 @@ pub fn encode_headers_end_stream_and_end_headers_test() {
 
 pub fn encode_headers_priority_test() {
   // RFC 9113 Section 6.2: PRIORITY (0x20) flag adds 5 bytes
-  frame.encode_headers(
+  h2_frame.encode_headers(
     stream_id: 1,
     end_stream: False,
     end_headers: False,
-    priority: Some(frame.StreamPriority(
+    priority: Some(h2_frame.StreamPriority(
       exclusive: False,
       stream_dependency: 3,
       weight: 15,
@@ -441,11 +441,11 @@ pub fn encode_headers_priority_test() {
 
 pub fn encode_headers_priority_exclusive_test() {
   // RFC 9113 Section 6.2: PRIORITY with exclusive bit set
-  frame.encode_headers(
+  h2_frame.encode_headers(
     stream_id: 1,
     end_stream: False,
     end_headers: False,
-    priority: Some(frame.StreamPriority(
+    priority: Some(h2_frame.StreamPriority(
       exclusive: True,
       stream_dependency: 5,
       weight: 255,
@@ -463,7 +463,7 @@ pub fn encode_headers_priority_exclusive_test() {
 
 pub fn encode_headers_padded_test() {
   // RFC 9113 Section 6.2: PADDED (0x08) flag
-  frame.encode_headers(
+  h2_frame.encode_headers(
     stream_id: 1,
     end_stream: False,
     end_headers: False,
@@ -481,11 +481,11 @@ pub fn encode_headers_padded_test() {
 
 pub fn encode_headers_padded_and_priority_test() {
   // RFC 9113 Section 6.2: Both PADDED (0x08) and PRIORITY (0x20)
-  frame.encode_headers(
+  h2_frame.encode_headers(
     stream_id: 1,
     end_stream: False,
     end_headers: False,
-    priority: Some(frame.StreamPriority(
+    priority: Some(h2_frame.StreamPriority(
       exclusive: True,
       stream_dependency: 7,
       weight: 100,
@@ -503,11 +503,11 @@ pub fn encode_headers_padded_and_priority_test() {
 
 pub fn encode_headers_all_flags_test() {
   // RFC 9113 Section 6.2: All defined flags (END_STREAM|END_HEADERS|PADDED|PRIORITY = 0x2D)
-  frame.encode_headers(
+  h2_frame.encode_headers(
     stream_id: 1,
     end_stream: True,
     end_headers: True,
-    priority: Some(frame.StreamPriority(
+    priority: Some(h2_frame.StreamPriority(
       exclusive: False,
       stream_dependency: 0,
       weight: 0,
@@ -525,7 +525,7 @@ pub fn encode_headers_all_flags_test() {
 
 pub fn encode_headers_empty_fragment_test() {
   // RFC 9113 Section 6.2: HEADERS frame with empty fragment is valid
-  frame.encode_headers(
+  h2_frame.encode_headers(
     stream_id: 1,
     end_stream: False,
     end_headers: False,
@@ -540,7 +540,7 @@ pub fn encode_headers_empty_fragment_test() {
 
 pub fn encode_headers_stream_id_zero_test() {
   // RFC 9113 Section 6.2: Stream ID 0x00 MUST be treated as connection error PROTOCOL_ERROR
-  frame.encode_headers(
+  h2_frame.encode_headers(
     stream_id: 0,
     end_stream: False,
     end_headers: False,
@@ -553,7 +553,7 @@ pub fn encode_headers_stream_id_zero_test() {
 
 pub fn encode_headers_padding_negative_test() {
   // Padding must be non-negative
-  frame.encode_headers(
+  h2_frame.encode_headers(
     stream_id: 1,
     end_stream: False,
     end_headers: False,
@@ -561,12 +561,12 @@ pub fn encode_headers_padding_negative_test() {
     data: <<"abc":utf8>>,
     padding: Some(-1),
   )
-  |> should.equal(Error(frame.InvalidPadding))
+  |> should.equal(Error(h2_frame.InvalidPadding))
 }
 
 pub fn encode_headers_padding_exceeds_byte_test() {
   // RFC 9113 Section 6.2: Pad Length is a single 8-bit field; max value is 255
-  frame.encode_headers(
+  h2_frame.encode_headers(
     stream_id: 1,
     end_stream: False,
     end_headers: False,
@@ -574,13 +574,13 @@ pub fn encode_headers_padding_exceeds_byte_test() {
     data: <<"abc":utf8>>,
     padding: Some(256),
   )
-  |> should.equal(Error(frame.InvalidPadding))
+  |> should.equal(Error(h2_frame.InvalidPadding))
 }
 
 pub fn encode_headers_roundtrip_test() {
   // Encode then parse should produce the same values
   let assert Ok(encoded) =
-    frame.encode_headers(
+    h2_frame.encode_headers(
       stream_id: 5,
       end_stream: True,
       end_headers: True,
@@ -589,11 +589,11 @@ pub fn encode_headers_roundtrip_test() {
       padding: None,
     )
   let assert Ok(#(h, rest)) = header.parse_header(encoded)
-  frame.parse_payload(h, rest)
+  h2_frame.parse_payload(h, rest)
   |> should.equal(
     Ok(
       #(
-        frame.Headers(
+        h2_frame.Headers(
           end_stream: True,
           end_headers: True,
           priority: None,
@@ -608,11 +608,11 @@ pub fn encode_headers_roundtrip_test() {
 pub fn encode_headers_padded_priority_roundtrip_test() {
   // Padded + priority encode then parse should recover all fields
   let assert Ok(encoded) =
-    frame.encode_headers(
+    h2_frame.encode_headers(
       stream_id: 3,
       end_stream: False,
       end_headers: True,
-      priority: Some(frame.StreamPriority(
+      priority: Some(h2_frame.StreamPriority(
         exclusive: True,
         stream_dependency: 10,
         weight: 42,
@@ -621,14 +621,14 @@ pub fn encode_headers_padded_priority_roundtrip_test() {
       padding: Some(4),
     )
   let assert Ok(#(h, rest)) = header.parse_header(encoded)
-  frame.parse_payload(h, rest)
+  h2_frame.parse_payload(h, rest)
   |> should.equal(
     Ok(
       #(
-        frame.Headers(
+        h2_frame.Headers(
           end_stream: False,
           end_headers: True,
-          priority: Some(frame.StreamPriority(
+          priority: Some(h2_frame.StreamPriority(
             exclusive: True,
             stream_dependency: 10,
             weight: 42,

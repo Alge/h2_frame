@@ -4,8 +4,8 @@ import gleam/int
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
-import h2o/frame/error
-import h2o/frame/header
+import h2_frame/error
+import h2_frame/header
 
 pub type FrameError {
   HeaderError(header.HeaderError)

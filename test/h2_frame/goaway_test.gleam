@@ -1,7 +1,7 @@
 import gleeunit/should
-import h2o/frame
-import h2o/frame/error
-import h2o/frame/header
+import h2_frame
+import h2_frame/error
+import h2_frame/header
 
 pub fn parse_goaway_test() {
   // RFC 9113 Section 6.8: Basic GOAWAY frame with no debug data
@@ -11,11 +11,11 @@ pub fn parse_goaway_test() {
     1:size(31), 0x00:size(32),
   >>
   let assert Ok(#(h, rest)) = header.parse_header(data)
-  frame.parse_payload(h, rest)
+  h2_frame.parse_payload(h, rest)
   |> should.equal(
     Ok(
       #(
-        frame.GoAway(
+        h2_frame.GoAway(
           last_stream_id: 1,
           error_code: error.NoError,
           debug_data: <<>>,
@@ -33,11 +33,11 @@ pub fn parse_goaway_with_error_test() {
     5:size(31), 0x01:size(32),
   >>
   let assert Ok(#(h, rest)) = header.parse_header(data)
-  frame.parse_payload(h, rest)
+  h2_frame.parse_payload(h, rest)
   |> should.equal(
     Ok(
       #(
-        frame.GoAway(
+        h2_frame.GoAway(
           last_stream_id: 5,
           error_code: error.ProtocolError,
           debug_data: <<>>,
@@ -55,11 +55,11 @@ pub fn parse_goaway_with_debug_data_test() {
     1:size(31), 0x00:size(32), "hello":utf8,
   >>
   let assert Ok(#(h, rest)) = header.parse_header(data)
-  frame.parse_payload(h, rest)
+  h2_frame.parse_payload(h, rest)
   |> should.equal(
     Ok(
       #(
-        frame.GoAway(last_stream_id: 1, error_code: error.NoError, debug_data: <<
+        h2_frame.GoAway(last_stream_id: 1, error_code: error.NoError, debug_data: <<
           "hello":utf8,
         >>),
         <<>>,
@@ -75,11 +75,11 @@ pub fn parse_goaway_zero_last_stream_id_test() {
     0:size(31), 0x00:size(32),
   >>
   let assert Ok(#(h, rest)) = header.parse_header(data)
-  frame.parse_payload(h, rest)
+  h2_frame.parse_payload(h, rest)
   |> should.equal(
     Ok(
       #(
-        frame.GoAway(
+        h2_frame.GoAway(
           last_stream_id: 0,
           error_code: error.NoError,
           debug_data: <<>>,
@@ -97,11 +97,11 @@ pub fn parse_goaway_unknown_error_code_test() {
     1:size(31), 0xFF:size(32),
   >>
   let assert Ok(#(h, rest)) = header.parse_header(data)
-  frame.parse_payload(h, rest)
+  h2_frame.parse_payload(h, rest)
   |> should.equal(
     Ok(
       #(
-        frame.GoAway(
+        h2_frame.GoAway(
           last_stream_id: 1,
           error_code: error.UnknownErrorCode(0xFF),
           debug_data: <<>>,
@@ -119,8 +119,8 @@ pub fn parse_goaway_stream_id_nonzero_test() {
     1:size(31), 0x00:size(32),
   >>
   let assert Ok(#(h, rest)) = header.parse_header(data)
-  frame.parse_payload(h, rest)
-  |> should.equal(Error(frame.ConnectionError(error.ProtocolError)))
+  h2_frame.parse_payload(h, rest)
+  |> should.equal(Error(h2_frame.ConnectionError(error.ProtocolError)))
 }
 
 pub fn parse_goaway_unknown_flags_ignored_test() {
@@ -130,11 +130,11 @@ pub fn parse_goaway_unknown_flags_ignored_test() {
     1:size(31), 0x00:size(32),
   >>
   let assert Ok(#(h, rest)) = header.parse_header(data)
-  frame.parse_payload(h, rest)
+  h2_frame.parse_payload(h, rest)
   |> should.equal(
     Ok(
       #(
-        frame.GoAway(
+        h2_frame.GoAway(
           last_stream_id: 1,
           error_code: error.NoError,
           debug_data: <<>>,
@@ -153,8 +153,8 @@ pub fn parse_goaway_too_short_length_test() {
     1:size(31),
   >>
   let assert Ok(#(h, rest)) = header.parse_header(data)
-  frame.parse_payload(h, rest)
-  |> should.equal(Error(frame.ConnectionError(error.FrameSizeError)))
+  h2_frame.parse_payload(h, rest)
+  |> should.equal(Error(h2_frame.ConnectionError(error.FrameSizeError)))
 }
 
 pub fn parse_goaway_truncated_payload_test() {
@@ -164,8 +164,8 @@ pub fn parse_goaway_truncated_payload_test() {
     1:size(31),
   >>
   let assert Ok(#(h, rest)) = header.parse_header(data)
-  frame.parse_payload(h, rest)
-  |> should.equal(Error(frame.IncompletePayload))
+  h2_frame.parse_payload(h, rest)
+  |> should.equal(Error(h2_frame.IncompletePayload))
 }
 
 pub fn parse_goaway_with_trailing_data_test() {
@@ -175,11 +175,11 @@ pub fn parse_goaway_with_trailing_data_test() {
     1:size(31), 0x00:size(32), 99, 99,
   >>
   let assert Ok(#(h, rest)) = header.parse_header(data)
-  frame.parse_payload(h, rest)
+  h2_frame.parse_payload(h, rest)
   |> should.equal(
     Ok(
       #(
-        frame.GoAway(
+        h2_frame.GoAway(
           last_stream_id: 1,
           error_code: error.NoError,
           debug_data: <<>>,
@@ -197,11 +197,11 @@ pub fn parse_goaway_debug_data_with_trailing_test() {
     1:size(31), 0x02:size(32), "err":utf8, 99, 99,
   >>
   let assert Ok(#(h, rest)) = header.parse_header(data)
-  frame.parse_payload(h, rest)
+  h2_frame.parse_payload(h, rest)
   |> should.equal(
     Ok(
       #(
-        frame.GoAway(
+        h2_frame.GoAway(
           last_stream_id: 1,
           error_code: error.InternalError,
           debug_data: <<"err":utf8>>,
@@ -216,7 +216,7 @@ pub fn parse_goaway_debug_data_with_trailing_test() {
 
 pub fn encode_goaway_test() {
   // RFC 9113 Section 6.8: Basic GOAWAY with no debug data
-  frame.encode_goaway(
+  h2_frame.encode_goaway(
     last_stream_id: 1,
     error_code: error.NoError,
     debug_data: <<>>,
@@ -231,7 +231,7 @@ pub fn encode_goaway_test() {
 
 pub fn encode_goaway_with_error_test() {
   // RFC 9113 Section 6.8: GOAWAY with PROTOCOL_ERROR
-  frame.encode_goaway(
+  h2_frame.encode_goaway(
     last_stream_id: 5,
     error_code: error.ProtocolError,
     debug_data: <<>>,
@@ -246,7 +246,7 @@ pub fn encode_goaway_with_error_test() {
 
 pub fn encode_goaway_with_debug_data_test() {
   // RFC 9113 Section 6.8: GOAWAY with additional debug data
-  frame.encode_goaway(last_stream_id: 1, error_code: error.NoError, debug_data: <<
+  h2_frame.encode_goaway(last_stream_id: 1, error_code: error.NoError, debug_data: <<
     "hello":utf8,
   >>)
   |> should.equal(
@@ -259,7 +259,7 @@ pub fn encode_goaway_with_debug_data_test() {
 
 pub fn encode_goaway_zero_last_stream_id_test() {
   // RFC 9113 Section 6.8: last_stream_id=0 means no streams were processed
-  frame.encode_goaway(
+  h2_frame.encode_goaway(
     last_stream_id: 0,
     error_code: error.NoError,
     debug_data: <<>>,
@@ -274,7 +274,7 @@ pub fn encode_goaway_zero_last_stream_id_test() {
 
 pub fn encode_goaway_unknown_error_code_test() {
   // RFC 9113 Section 7: Unknown error codes are valid
-  frame.encode_goaway(
+  h2_frame.encode_goaway(
     last_stream_id: 1,
     error_code: error.UnknownErrorCode(0xFF),
     debug_data: <<>>,
@@ -290,17 +290,17 @@ pub fn encode_goaway_unknown_error_code_test() {
 pub fn encode_goaway_roundtrip_test() {
   // Encode then parse should produce the same values
   let assert Ok(encoded) =
-    frame.encode_goaway(
+    h2_frame.encode_goaway(
       last_stream_id: 3,
       error_code: error.InternalError,
       debug_data: <<"err":utf8>>,
     )
   let assert Ok(#(h, rest)) = header.parse_header(encoded)
-  frame.parse_payload(h, rest)
+  h2_frame.parse_payload(h, rest)
   |> should.equal(
     Ok(
       #(
-        frame.GoAway(
+        h2_frame.GoAway(
           last_stream_id: 3,
           error_code: error.InternalError,
           debug_data: <<"err":utf8>>,

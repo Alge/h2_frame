@@ -1,7 +1,7 @@
 import gleeunit/should
-import h2o/frame
-import h2o/frame/error
-import h2o/frame/header
+import h2_frame
+import h2_frame/error
+import h2_frame/header
 
 pub fn parse_window_update_test() {
   // RFC 9113 Section 6.9: Basic WINDOW_UPDATE on a stream
@@ -10,8 +10,8 @@ pub fn parse_window_update_test() {
     1000:size(31),
   >>
   let assert Ok(#(h, rest)) = header.parse_header(data)
-  frame.parse_payload(h, rest)
-  |> should.equal(Ok(#(frame.WindowUpdate(window_size_increment: 1000), <<>>)))
+  h2_frame.parse_payload(h, rest)
+  |> should.equal(Ok(#(h2_frame.WindowUpdate(window_size_increment: 1000), <<>>)))
 }
 
 pub fn parse_window_update_connection_test() {
@@ -21,9 +21,9 @@ pub fn parse_window_update_connection_test() {
     65_535:size(31),
   >>
   let assert Ok(#(h, rest)) = header.parse_header(data)
-  frame.parse_payload(h, rest)
+  h2_frame.parse_payload(h, rest)
   |> should.equal(
-    Ok(#(frame.WindowUpdate(window_size_increment: 65_535), <<>>)),
+    Ok(#(h2_frame.WindowUpdate(window_size_increment: 65_535), <<>>)),
   )
 }
 
@@ -34,9 +34,9 @@ pub fn parse_window_update_max_increment_test() {
     2_147_483_647:size(31),
   >>
   let assert Ok(#(h, rest)) = header.parse_header(data)
-  frame.parse_payload(h, rest)
+  h2_frame.parse_payload(h, rest)
   |> should.equal(
-    Ok(#(frame.WindowUpdate(window_size_increment: 2_147_483_647), <<>>)),
+    Ok(#(h2_frame.WindowUpdate(window_size_increment: 2_147_483_647), <<>>)),
   )
 }
 
@@ -48,8 +48,8 @@ pub fn parse_window_update_zero_increment_stream_test() {
     0:size(31),
   >>
   let assert Ok(#(h, rest)) = header.parse_header(data)
-  frame.parse_payload(h, rest)
-  |> should.equal(Error(frame.ConnectionError(error.ProtocolError)))
+  h2_frame.parse_payload(h, rest)
+  |> should.equal(Error(h2_frame.ConnectionError(error.ProtocolError)))
 }
 
 pub fn parse_window_update_zero_increment_connection_test() {
@@ -60,8 +60,8 @@ pub fn parse_window_update_zero_increment_connection_test() {
     0:size(31),
   >>
   let assert Ok(#(h, rest)) = header.parse_header(data)
-  frame.parse_payload(h, rest)
-  |> should.equal(Error(frame.ConnectionError(error.ProtocolError)))
+  h2_frame.parse_payload(h, rest)
+  |> should.equal(Error(h2_frame.ConnectionError(error.ProtocolError)))
 }
 
 pub fn parse_window_update_wrong_length_short_test() {
@@ -70,8 +70,8 @@ pub fn parse_window_update_wrong_length_short_test() {
     3:size(24), 8:size(8), 0:size(8), 0:size(1), 1:size(31), 0, 0, 0,
   >>
   let assert Ok(#(h, rest)) = header.parse_header(data)
-  frame.parse_payload(h, rest)
-  |> should.equal(Error(frame.ConnectionError(error.FrameSizeError)))
+  h2_frame.parse_payload(h, rest)
+  |> should.equal(Error(h2_frame.ConnectionError(error.FrameSizeError)))
 }
 
 pub fn parse_window_update_wrong_length_long_test() {
@@ -81,8 +81,8 @@ pub fn parse_window_update_wrong_length_long_test() {
     1000:size(31), 0,
   >>
   let assert Ok(#(h, rest)) = header.parse_header(data)
-  frame.parse_payload(h, rest)
-  |> should.equal(Error(frame.ConnectionError(error.FrameSizeError)))
+  h2_frame.parse_payload(h, rest)
+  |> should.equal(Error(h2_frame.ConnectionError(error.FrameSizeError)))
 }
 
 pub fn parse_window_update_unknown_flags_ignored_test() {
@@ -92,16 +92,16 @@ pub fn parse_window_update_unknown_flags_ignored_test() {
     1000:size(31),
   >>
   let assert Ok(#(h, rest)) = header.parse_header(data)
-  frame.parse_payload(h, rest)
-  |> should.equal(Ok(#(frame.WindowUpdate(window_size_increment: 1000), <<>>)))
+  h2_frame.parse_payload(h, rest)
+  |> should.equal(Ok(#(h2_frame.WindowUpdate(window_size_increment: 1000), <<>>)))
 }
 
 pub fn parse_window_update_truncated_payload_test() {
   // RFC 9113 Section 6.9: Incomplete payload
   let data = <<4:size(24), 8:size(8), 0:size(8), 0:size(1), 1:size(31), 0, 0>>
   let assert Ok(#(h, rest)) = header.parse_header(data)
-  frame.parse_payload(h, rest)
-  |> should.equal(Error(frame.IncompletePayload))
+  h2_frame.parse_payload(h, rest)
+  |> should.equal(Error(h2_frame.IncompletePayload))
 }
 
 pub fn parse_window_update_with_trailing_data_test() {
@@ -111,9 +111,9 @@ pub fn parse_window_update_with_trailing_data_test() {
     1000:size(31), 99, 99,
   >>
   let assert Ok(#(h, rest)) = header.parse_header(data)
-  frame.parse_payload(h, rest)
+  h2_frame.parse_payload(h, rest)
   |> should.equal(
-    Ok(#(frame.WindowUpdate(window_size_increment: 1000), <<99, 99>>)),
+    Ok(#(h2_frame.WindowUpdate(window_size_increment: 1000), <<99, 99>>)),
   )
 }
 
@@ -121,7 +121,7 @@ pub fn parse_window_update_with_trailing_data_test() {
 
 pub fn encode_window_update_stream_test() {
   // RFC 9113 Section 6.9: WINDOW_UPDATE on a stream
-  frame.encode_window_update(stream_id: 1, window_size_increment: 1000)
+  h2_frame.encode_window_update(stream_id: 1, window_size_increment: 1000)
   |> should.equal(
     Ok(<<
       4:size(24), 8:size(8), 0:size(8), 0:size(1), 1:size(31), 0:size(1),
@@ -132,7 +132,7 @@ pub fn encode_window_update_stream_test() {
 
 pub fn encode_window_update_connection_test() {
   // RFC 9113 Section 6.9: WINDOW_UPDATE on connection (stream_id=0 is valid)
-  frame.encode_window_update(stream_id: 0, window_size_increment: 65_535)
+  h2_frame.encode_window_update(stream_id: 0, window_size_increment: 65_535)
   |> should.equal(
     Ok(<<
       4:size(24), 8:size(8), 0:size(8), 0:size(1), 0:size(31), 0:size(1),
@@ -143,7 +143,7 @@ pub fn encode_window_update_connection_test() {
 
 pub fn encode_window_update_max_increment_test() {
   // RFC 9113 Section 6.9: Maximum window size increment 2^31-1
-  frame.encode_window_update(stream_id: 1, window_size_increment: 2_147_483_647)
+  h2_frame.encode_window_update(stream_id: 1, window_size_increment: 2_147_483_647)
   |> should.equal(
     Ok(<<
       4:size(24), 8:size(8), 0:size(8), 0:size(1), 1:size(31), 0:size(1),
@@ -154,15 +154,15 @@ pub fn encode_window_update_max_increment_test() {
 
 pub fn encode_window_update_zero_increment_test() {
   // RFC 9113 Section 6.9: Increment of 0 MUST be treated as error
-  frame.encode_window_update(stream_id: 1, window_size_increment: 0)
+  h2_frame.encode_window_update(stream_id: 1, window_size_increment: 0)
   |> should.be_error()
 }
 
 pub fn encode_window_update_roundtrip_test() {
   // Encode then parse should produce the same values
   let assert Ok(encoded) =
-    frame.encode_window_update(stream_id: 3, window_size_increment: 5000)
+    h2_frame.encode_window_update(stream_id: 3, window_size_increment: 5000)
   let assert Ok(#(h, rest)) = header.parse_header(encoded)
-  frame.parse_payload(h, rest)
-  |> should.equal(Ok(#(frame.WindowUpdate(window_size_increment: 5000), <<>>)))
+  h2_frame.parse_payload(h, rest)
+  |> should.equal(Ok(#(h2_frame.WindowUpdate(window_size_increment: 5000), <<>>)))
 }

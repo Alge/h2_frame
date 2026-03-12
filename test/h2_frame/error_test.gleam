@@ -1,6 +1,6 @@
 import gleam/list
 import gleeunit/should
-import h2o/frame/error
+import h2_frame/error
 
 // RFC 9113 Section 7: Error codes are 32-bit fields used in RST_STREAM and GOAWAY frames
 
