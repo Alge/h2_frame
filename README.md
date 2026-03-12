@@ -4,7 +4,7 @@
 [![Hex Docs](https://img.shields.io/badge/hex-docs-ffaff3)](https://hexdocs.pm/h2_frame/)
 
 ```sh
-gleam add h2_frame@1
+gleam add h2_frame
 ```
 ```gleam
 import h2_frame
