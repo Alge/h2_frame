@@ -1,20 +1,20 @@
-# h2o
+# h2_frame
 
-[![Package Version](https://img.shields.io/hexpm/v/h2o)](https://hex.pm/packages/h2o)
-[![Hex Docs](https://img.shields.io/badge/hex-docs-ffaff3)](https://hexdocs.pm/h2o/)
+[![Package Version](https://img.shields.io/hexpm/v/h2_frame)](https://hex.pm/packages/h2_frame)
+[![Hex Docs](https://img.shields.io/badge/hex-docs-ffaff3)](https://hexdocs.pm/h2_frame/)
 
 ```sh
-gleam add h2o@1
+gleam add h2_frame@1
 ```
 ```gleam
-import h2o
+import h2_frame
 
 pub fn main() -> Nil {
   // TODO: An example of the project in use
 }
 ```
 
-Further documentation can be found at <https://hexdocs.pm/h2o>.
+Further documentation can be found at <https://hexdocs.pm/h2_frame>.
 
 ## Development
 
