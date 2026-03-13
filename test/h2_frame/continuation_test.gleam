@@ -1,14 +1,12 @@
 import gleeunit/should
 import h2_frame
-import h2_frame/error
-import h2_frame/header
 
 pub fn parse_continuation_test() {
   // RFC 9113 Section 6.10: Basic CONTINUATION frame with fragment
   let data = <<
     5:size(24), 9:size(8), 0:size(8), 0:size(1), 1:size(31), "hello":utf8,
   >>
-  let assert Ok(#(h, rest)) = header.parse_header(data)
+  let assert Ok(#(h, rest)) = h2_frame.parse_header(data)
   h2_frame.parse_payload(h, rest)
   |> should.equal(
     Ok(
@@ -22,7 +20,7 @@ pub fn parse_continuation_end_headers_test() {
   let data = <<
     3:size(24), 9:size(8), 4:size(8), 0:size(1), 1:size(31), "abc":utf8,
   >>
-  let assert Ok(#(h, rest)) = header.parse_header(data)
+  let assert Ok(#(h, rest)) = h2_frame.parse_header(data)
   h2_frame.parse_payload(h, rest)
   |> should.equal(
     Ok(#(h2_frame.Continuation(end_headers: True, data: <<"abc":utf8>>), <<>>)),
@@ -32,7 +30,7 @@ pub fn parse_continuation_end_headers_test() {
 pub fn parse_continuation_empty_fragment_test() {
   // RFC 9113 Section 6.10: Empty fragment is valid
   let data = <<0:size(24), 9:size(8), 0:size(8), 0:size(1), 1:size(31)>>
-  let assert Ok(#(h, rest)) = header.parse_header(data)
+  let assert Ok(#(h, rest)) = h2_frame.parse_header(data)
   h2_frame.parse_payload(h, rest)
   |> should.equal(
     Ok(#(h2_frame.Continuation(end_headers: False, data: <<>>), <<>>)),
@@ -44,9 +42,9 @@ pub fn parse_continuation_stream_id_zero_test() {
   let data = <<
     3:size(24), 9:size(8), 0:size(8), 0:size(1), 0:size(31), "abc":utf8,
   >>
-  let assert Ok(#(h, rest)) = header.parse_header(data)
+  let assert Ok(#(h, rest)) = h2_frame.parse_header(data)
   h2_frame.parse_payload(h, rest)
-  |> should.equal(Error(h2_frame.ConnectionError(error.ProtocolError)))
+  |> should.equal(Error(h2_frame.ConnectionError(h2_frame.ProtocolError)))
 }
 
 pub fn parse_continuation_unknown_flags_ignored_test() {
@@ -55,7 +53,7 @@ pub fn parse_continuation_unknown_flags_ignored_test() {
   let data = <<
     3:size(24), 9:size(8), 0xFB:size(8), 0:size(1), 1:size(31), "abc":utf8,
   >>
-  let assert Ok(#(h, rest)) = header.parse_header(data)
+  let assert Ok(#(h, rest)) = h2_frame.parse_header(data)
   h2_frame.parse_payload(h, rest)
   |> should.equal(
     Ok(#(h2_frame.Continuation(end_headers: False, data: <<"abc":utf8>>), <<>>)),
@@ -67,7 +65,7 @@ pub fn parse_continuation_truncated_payload_test() {
   let data = <<
     10:size(24), 9:size(8), 0:size(8), 0:size(1), 1:size(31), "short":utf8,
   >>
-  let assert Ok(#(h, rest)) = header.parse_header(data)
+  let assert Ok(#(h, rest)) = h2_frame.parse_header(data)
   h2_frame.parse_payload(h, rest)
   |> should.equal(Error(h2_frame.IncompletePayload))
 }
@@ -77,7 +75,7 @@ pub fn parse_continuation_with_trailing_data_test() {
   let data = <<
     3:size(24), 9:size(8), 0:size(8), 0:size(1), 1:size(31), "abc":utf8, 99, 99,
   >>
-  let assert Ok(#(h, rest)) = header.parse_header(data)
+  let assert Ok(#(h, rest)) = h2_frame.parse_header(data)
   h2_frame.parse_payload(h, rest)
   |> should.equal(
     Ok(
@@ -133,7 +131,7 @@ pub fn encode_continuation_roundtrip_test() {
     h2_frame.encode_continuation(stream_id: 3, end_headers: True, data: <<
       "hpack":utf8,
     >>)
-  let assert Ok(#(h, rest)) = header.parse_header(encoded)
+  let assert Ok(#(h, rest)) = h2_frame.parse_header(encoded)
   h2_frame.parse_payload(h, rest)
   |> should.equal(
     Ok(

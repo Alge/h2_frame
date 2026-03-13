@@ -1,7 +1,5 @@
 import gleeunit/should
 import h2_frame
-import h2_frame/error
-import h2_frame/header
 
 pub fn parse_ping_test() {
   // RFC 9113 Section 6.7: PING frame contains 8 octets of opaque data
@@ -9,7 +7,7 @@ pub fn parse_ping_test() {
     8:size(24), 6:size(8), 0:size(8), 0:size(1), 0:size(31), 1, 2, 3, 4, 5, 6, 7,
     8,
   >>
-  let assert Ok(#(h, rest)) = header.parse_header(data)
+  let assert Ok(#(h, rest)) = h2_frame.parse_header(data)
   h2_frame.parse_payload(h, rest)
   |> should.equal(
     Ok(#(h2_frame.Ping(ack: False, data: <<1, 2, 3, 4, 5, 6, 7, 8>>), <<>>)),
@@ -22,7 +20,7 @@ pub fn parse_ping_ack_test() {
     8:size(24), 6:size(8), 1:size(8), 0:size(1), 0:size(31), 0, 0, 0, 0, 0, 0, 0,
     0,
   >>
-  let assert Ok(#(h, rest)) = header.parse_header(data)
+  let assert Ok(#(h, rest)) = h2_frame.parse_header(data)
   h2_frame.parse_payload(h, rest)
   |> should.equal(
     Ok(#(h2_frame.Ping(ack: True, data: <<0, 0, 0, 0, 0, 0, 0, 0>>), <<>>)),
@@ -34,9 +32,9 @@ pub fn parse_ping_wrong_length_test() {
   let data = <<
     4:size(24), 6:size(8), 0:size(8), 0:size(1), 0:size(31), 1, 2, 3, 4,
   >>
-  let assert Ok(#(h, rest)) = header.parse_header(data)
+  let assert Ok(#(h, rest)) = h2_frame.parse_header(data)
   h2_frame.parse_payload(h, rest)
-  |> should.equal(Error(h2_frame.ConnectionError(error.FrameSizeError)))
+  |> should.equal(Error(h2_frame.ConnectionError(h2_frame.FrameSizeError)))
 }
 
 pub fn parse_ping_nonzero_stream_id_test() {
@@ -45,9 +43,9 @@ pub fn parse_ping_nonzero_stream_id_test() {
     8:size(24), 6:size(8), 0:size(8), 0:size(1), 1:size(31), 0, 0, 0, 0, 0, 0, 0,
     0,
   >>
-  let assert Ok(#(h, rest)) = header.parse_header(data)
+  let assert Ok(#(h, rest)) = h2_frame.parse_header(data)
   h2_frame.parse_payload(h, rest)
-  |> should.equal(Error(h2_frame.ConnectionError(error.ProtocolError)))
+  |> should.equal(Error(h2_frame.ConnectionError(h2_frame.ProtocolError)))
 }
 
 pub fn parse_ping_unknown_flags_ignored_test() {
@@ -56,7 +54,7 @@ pub fn parse_ping_unknown_flags_ignored_test() {
     8:size(24), 6:size(8), 3:size(8), 0:size(1), 0:size(31), 1, 2, 3, 4, 5, 6, 7,
     8,
   >>
-  let assert Ok(#(h, rest)) = header.parse_header(data)
+  let assert Ok(#(h, rest)) = h2_frame.parse_header(data)
   h2_frame.parse_payload(h, rest)
   |> should.equal(
     Ok(#(h2_frame.Ping(ack: True, data: <<1, 2, 3, 4, 5, 6, 7, 8>>), <<>>)),
@@ -69,7 +67,7 @@ pub fn parse_ping_unknown_flags_no_ack_test() {
     8:size(24), 6:size(8), 2:size(8), 0:size(1), 0:size(31), 1, 2, 3, 4, 5, 6, 7,
     8,
   >>
-  let assert Ok(#(h, rest)) = header.parse_header(data)
+  let assert Ok(#(h, rest)) = h2_frame.parse_header(data)
   h2_frame.parse_payload(h, rest)
   |> should.equal(
     Ok(#(h2_frame.Ping(ack: False, data: <<1, 2, 3, 4, 5, 6, 7, 8>>), <<>>)),
@@ -81,7 +79,7 @@ pub fn parse_ping_truncated_payload_test() {
   let data = <<
     8:size(24), 6:size(8), 0:size(8), 0:size(1), 0:size(31), 1, 2, 3, 4,
   >>
-  let assert Ok(#(h, rest)) = header.parse_header(data)
+  let assert Ok(#(h, rest)) = h2_frame.parse_header(data)
   h2_frame.parse_payload(h, rest)
   |> should.equal(Error(h2_frame.IncompletePayload))
 }
@@ -92,7 +90,7 @@ pub fn parse_ping_with_trailing_data_test() {
     8:size(24), 6:size(8), 0:size(8), 0:size(1), 0:size(31), 1, 2, 3, 4, 5, 6, 7,
     8, 99, 99,
   >>
-  let assert Ok(#(h, rest)) = header.parse_header(data)
+  let assert Ok(#(h, rest)) = h2_frame.parse_header(data)
   h2_frame.parse_payload(h, rest)
   |> should.equal(
     Ok(
@@ -152,7 +150,7 @@ pub fn encode_ping_roundtrip_test() {
   // Encode then parse should produce the same values
   let assert Ok(encoded) =
     h2_frame.encode_ping(ack: False, data: <<10, 20, 30, 40, 50, 60, 70, 80>>)
-  let assert Ok(#(h, rest)) = header.parse_header(encoded)
+  let assert Ok(#(h, rest)) = h2_frame.parse_header(encoded)
   h2_frame.parse_payload(h, rest)
   |> should.equal(
     Ok(

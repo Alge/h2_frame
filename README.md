@@ -28,9 +28,9 @@ let assert Ok(#(frame_header, payload, rest)) = h2_frame.parse(data)
 Or parse the header and payload separately for more control:
 
 ```gleam
-import h2_frame/header
+import h2_frame
 
-let assert Ok(#(frame_header, rest)) = header.parse_header(data)
+let assert Ok(#(frame_header, rest)) = h2_frame.parse_header(data)
 let assert Ok(#(payload, rest)) = h2_frame.parse_payload(frame_header, rest)
 ```
 

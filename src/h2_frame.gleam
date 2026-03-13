@@ -4,12 +4,160 @@ import gleam/int
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
-import h2_frame/error
-import h2_frame/header
+
+pub type ErrorCode {
+  NoError
+  ProtocolError
+  InternalError
+  FlowControlError
+  SettingsTimeout
+  StreamClosed
+  FrameSizeError
+  RefusedStream
+  Cancel
+  CompressionError
+  ConnectError
+  EnhanceYourCalm
+  InadequateSecurity
+  Http11Required
+  UnknownErrorCode(Int)
+}
+
+pub fn parse_error_code(code: Int) -> ErrorCode {
+  case code {
+    0x00 -> NoError
+    0x01 -> ProtocolError
+    0x02 -> InternalError
+    0x03 -> FlowControlError
+    0x04 -> SettingsTimeout
+    0x05 -> StreamClosed
+    0x06 -> FrameSizeError
+    0x07 -> RefusedStream
+    0x08 -> Cancel
+    0x09 -> CompressionError
+    0x0a -> ConnectError
+    0x0b -> EnhanceYourCalm
+    0x0c -> InadequateSecurity
+    0x0d -> Http11Required
+    code -> UnknownErrorCode(code)
+  }
+}
+
+pub fn encode_error_code(error_code: ErrorCode) -> Int {
+  case error_code {
+    NoError -> 0x00
+    ProtocolError -> 0x01
+    InternalError -> 0x02
+    FlowControlError -> 0x03
+    SettingsTimeout -> 0x04
+    StreamClosed -> 0x05
+    FrameSizeError -> 0x06
+    RefusedStream -> 0x07
+    Cancel -> 0x08
+    CompressionError -> 0x09
+    ConnectError -> 0x0a
+    EnhanceYourCalm -> 0x0b
+    InadequateSecurity -> 0x0c
+    Http11Required -> 0x0d
+    UnknownErrorCode(code) -> code
+  }
+}
+
+pub type FrameType {
+  DataFrame
+  HeadersFrame
+  PriorityFrame
+  RstStreamFrame
+  SettingsFrame
+  PushPromiseFrame
+  PingFrame
+  GoAwayFrame
+  WindowUpdateFrame
+  ContinuationFrame
+  UnknownFrame(Int)
+}
+
+pub type FrameHeader {
+  FrameHeader(length: Int, frame_type: FrameType, flags: Int, stream_id: Int)
+}
+
+pub type HeaderError {
+  IncompleteHeader
+}
+
+fn parse_frame_type(code: Int) -> FrameType {
+  case code {
+    0 -> DataFrame
+    1 -> HeadersFrame
+    2 -> PriorityFrame
+    3 -> RstStreamFrame
+    4 -> SettingsFrame
+    5 -> PushPromiseFrame
+    6 -> PingFrame
+    7 -> GoAwayFrame
+    8 -> WindowUpdateFrame
+    9 -> ContinuationFrame
+    _ -> UnknownFrame(code)
+  }
+}
+
+fn encode_frame_type(frame_type: FrameType) -> Int {
+  case frame_type {
+    DataFrame -> 0
+    HeadersFrame -> 1
+    PriorityFrame -> 2
+    RstStreamFrame -> 3
+    SettingsFrame -> 4
+    PushPromiseFrame -> 5
+    PingFrame -> 6
+    GoAwayFrame -> 7
+    WindowUpdateFrame -> 8
+    ContinuationFrame -> 9
+    UnknownFrame(code) -> code
+  }
+}
+
+pub fn encode_header(header: FrameHeader) -> BitArray {
+  <<
+    header.length:size(24),
+    encode_frame_type(header.frame_type):size(8),
+    header.flags:size(8),
+    0:size(1),
+    header.stream_id:size(31),
+  >>
+}
+
+/// Parses a 9-byte HTTP/2 frame header from binary data.
+/// Returns the frame header and any remaining bytes after it.
+pub fn parse_header(
+  data: BitArray,
+) -> Result(#(FrameHeader, BitArray), HeaderError) {
+  case data {
+    <<
+      length:size(24),
+      type_code:size(8),
+      flags:size(8),
+      _reserved:size(1),
+      stream_id:size(31),
+      rest:bits,
+    >> -> {
+      Ok(#(
+        FrameHeader(
+          length: length,
+          frame_type: parse_frame_type(type_code),
+          flags: flags,
+          stream_id: stream_id,
+        ),
+        rest,
+      ))
+    }
+    _ -> Error(IncompleteHeader)
+  }
+}
 
 pub type FrameError {
-  HeaderError(header.HeaderError)
-  ConnectionError(error.ErrorCode)
+  HeaderError(HeaderError)
+  ConnectionError(ErrorCode)
   IncompletePayload
   InvalidPadding
 }
@@ -82,11 +230,11 @@ pub type Payload {
     data: BitArray,
   )
   Priority(exclusive: Bool, stream_dependency: Int, weight: Int)
-  RstStream(error_code: error.ErrorCode)
+  RstStream(error_code: ErrorCode)
   Settings(ack: Bool, settings: List(Setting))
   PushPromise(end_headers: Bool, promised_stream_id: Int, data: BitArray)
   Ping(ack: Bool, data: BitArray)
-  GoAway(last_stream_id: Int, error_code: error.ErrorCode, debug_data: BitArray)
+  GoAway(last_stream_id: Int, error_code: ErrorCode, debug_data: BitArray)
   WindowUpdate(window_size_increment: Int)
   Continuation(end_headers: Bool, data: BitArray)
   Unknown(data: BitArray)
@@ -109,12 +257,12 @@ fn encode_stream_priority(stream_priority: StreamPriority) -> BitArray {
 }
 
 fn parse_data_payload(
-  frame_header: header.FrameHeader,
+  frame_header: FrameHeader,
   payload: BitArray,
 ) -> Result(#(Payload, BitArray), FrameError) {
   use <- bool.guard(
     frame_header.stream_id == 0,
-    Error(ConnectionError(error.ProtocolError)),
+    Error(ConnectionError(ProtocolError)),
   )
   let length = frame_header.length
 
@@ -141,7 +289,7 @@ fn parse_data_payload(
 
   use <- bool.guard(
     data_length < 0,
-    Error(ConnectionError(error.ProtocolError)),
+    Error(ConnectionError(ProtocolError)),
   )
 
   case payload {
@@ -154,12 +302,12 @@ fn parse_data_payload(
 }
 
 fn parse_headers_payload(
-  frame_header: header.FrameHeader,
+  frame_header: FrameHeader,
   payload: BitArray,
 ) -> Result(#(Payload, BitArray), FrameError) {
   use <- bool.guard(
     frame_header.stream_id == 0,
-    Error(ConnectionError(error.ProtocolError)),
+    Error(ConnectionError(ProtocolError)),
   )
 
   let length = frame_header.length
@@ -219,7 +367,7 @@ fn parse_headers_payload(
 
   use <- bool.guard(
     data_length < 0,
-    Error(ConnectionError(error.ProtocolError)),
+    Error(ConnectionError(ProtocolError)),
   )
 
   case payload {
@@ -240,16 +388,16 @@ fn parse_headers_payload(
 }
 
 fn parse_priority_payload(
-  frame_header: header.FrameHeader,
+  frame_header: FrameHeader,
   payload: BitArray,
 ) -> Result(#(Payload, BitArray), FrameError) {
   use <- bool.guard(
     frame_header.stream_id == 0,
-    Error(ConnectionError(error.ProtocolError)),
+    Error(ConnectionError(ProtocolError)),
   )
   use <- bool.guard(
     frame_header.length != 5,
-    Error(ConnectionError(error.FrameSizeError)),
+    Error(ConnectionError(FrameSizeError)),
   )
 
   case payload {
@@ -274,46 +422,46 @@ fn parse_priority_payload(
 }
 
 fn parse_rst_stream_payload(
-  frame_header: header.FrameHeader,
+  frame_header: FrameHeader,
   payload: BitArray,
 ) -> Result(#(Payload, BitArray), FrameError) {
   use <- bool.guard(
     frame_header.stream_id == 0,
-    Error(ConnectionError(error.ProtocolError)),
+    Error(ConnectionError(ProtocolError)),
   )
 
   use <- bool.guard(
     frame_header.length != 4,
-    Error(ConnectionError(error.FrameSizeError)),
+    Error(ConnectionError(FrameSizeError)),
   )
 
   case payload {
     <<error_code:size(32), rest:bits>> -> {
-      Ok(#(RstStream(error_code: error.parse_error_code(error_code)), rest))
+      Ok(#(RstStream(error_code: parse_error_code(error_code)), rest))
     }
     _ -> Error(IncompletePayload)
   }
 }
 
 fn parse_settings_payload(
-  frame_header: header.FrameHeader,
+  frame_header: FrameHeader,
   payload: BitArray,
 ) -> Result(#(Payload, BitArray), FrameError) {
   use <- bool.guard(
     frame_header.stream_id != 0,
-    Error(ConnectionError(error.ProtocolError)),
+    Error(ConnectionError(ProtocolError)),
   )
 
   use <- bool.guard(
     frame_header.length % 6 != 0,
-    Error(ConnectionError(error.FrameSizeError)),
+    Error(ConnectionError(FrameSizeError)),
   )
 
   let ack = int.bitwise_and(frame_header.flags, 0x01) == 0x01
 
   use <- bool.guard(
     frame_header.length != 0 && ack,
-    Error(ConnectionError(error.FrameSizeError)),
+    Error(ConnectionError(FrameSizeError)),
   )
 
   let length = frame_header.length
@@ -328,12 +476,12 @@ fn parse_settings_payload(
 }
 
 fn parse_push_promise_payload(
-  frame_header: header.FrameHeader,
+  frame_header: FrameHeader,
   payload: BitArray,
 ) -> Result(#(Payload, BitArray), FrameError) {
   use <- bool.guard(
     frame_header.stream_id == 0,
-    Error(ConnectionError(error.ProtocolError)),
+    Error(ConnectionError(ProtocolError)),
   )
   let length = frame_header.length
 
@@ -361,7 +509,7 @@ fn parse_push_promise_payload(
 
   use <- bool.guard(
     data_length < 0,
-    Error(ConnectionError(error.ProtocolError)),
+    Error(ConnectionError(ProtocolError)),
   )
 
   case payload {
@@ -386,18 +534,18 @@ fn parse_push_promise_payload(
 }
 
 fn parse_ping_payload(
-  frame_header: header.FrameHeader,
+  frame_header: FrameHeader,
   payload: BitArray,
 ) -> Result(#(Payload, BitArray), FrameError) {
   use <- bool.guard(
     frame_header.stream_id != 0,
-    Error(ConnectionError(error.ProtocolError)),
+    Error(ConnectionError(ProtocolError)),
   )
 
   // Make sure the length reported in header is 8 bytes
   use <- bool.guard(
     frame_header.length != 8,
-    Error(ConnectionError(error.FrameSizeError)),
+    Error(ConnectionError(FrameSizeError)),
   )
 
   case payload {
@@ -411,17 +559,17 @@ fn parse_ping_payload(
 }
 
 fn parse_go_away_payload(
-  frame_header: header.FrameHeader,
+  frame_header: FrameHeader,
   payload: BitArray,
 ) -> Result(#(Payload, BitArray), FrameError) {
   use <- bool.guard(
     frame_header.stream_id != 0,
-    Error(ConnectionError(error.ProtocolError)),
+    Error(ConnectionError(ProtocolError)),
   )
 
   use <- bool.guard(
     frame_header.length < 8,
-    Error(ConnectionError(error.FrameSizeError)),
+    Error(ConnectionError(FrameSizeError)),
   )
 
   let debug_data_length = frame_header.length - 8
@@ -437,7 +585,7 @@ fn parse_go_away_payload(
       Ok(#(
         GoAway(
           last_stream_id: last_stream_id,
-          error_code: error.parse_error_code(error_code),
+          error_code: parse_error_code(error_code),
           debug_data: debug_data,
         ),
         rest,
@@ -449,19 +597,19 @@ fn parse_go_away_payload(
 }
 
 fn parse_window_update_payload(
-  frame_header: header.FrameHeader,
+  frame_header: FrameHeader,
   payload: BitArray,
 ) -> Result(#(Payload, BitArray), FrameError) {
   use <- bool.guard(
     frame_header.length != 4,
-    Error(ConnectionError(error.FrameSizeError)),
+    Error(ConnectionError(FrameSizeError)),
   )
 
   case payload {
     <<_reserved:size(1), window_size_increment:size(31), rest:bits>> -> {
       use <- bool.guard(
         window_size_increment == 0,
-        Error(ConnectionError(error.ProtocolError)),
+        Error(ConnectionError(ProtocolError)),
       )
 
       Ok(#(WindowUpdate(window_size_increment: window_size_increment), rest))
@@ -471,12 +619,12 @@ fn parse_window_update_payload(
 }
 
 fn parse_continuation_payload(
-  frame_header: header.FrameHeader,
+  frame_header: FrameHeader,
   payload: BitArray,
 ) -> Result(#(Payload, BitArray), FrameError) {
   use <- bool.guard(
     frame_header.stream_id == 0,
-    Error(ConnectionError(error.ProtocolError)),
+    Error(ConnectionError(ProtocolError)),
   )
 
   let end_headers = int.bitwise_and(frame_header.flags, 0x04) == 0x04
@@ -492,7 +640,7 @@ fn parse_continuation_payload(
 }
 
 fn parse_unknown_payload(
-  frame_header: header.FrameHeader,
+  frame_header: FrameHeader,
   payload: BitArray,
 ) -> Result(#(Payload, BitArray), FrameError) {
   let length = frame_header.length
@@ -508,21 +656,21 @@ fn parse_unknown_payload(
 /// Parses a frame payload given an already-parsed frame header.
 /// Returns the decoded payload and any remaining bytes after the frame.
 pub fn parse_payload(
-  frame_header: header.FrameHeader,
+  frame_header: FrameHeader,
   data: BitArray,
 ) -> Result(#(Payload, BitArray), FrameError) {
   case frame_header.frame_type {
-    header.Data -> parse_data_payload(frame_header, data)
-    header.Headers -> parse_headers_payload(frame_header, data)
-    header.Priority -> parse_priority_payload(frame_header, data)
-    header.RstStream -> parse_rst_stream_payload(frame_header, data)
-    header.Settings -> parse_settings_payload(frame_header, data)
-    header.PushPromise -> parse_push_promise_payload(frame_header, data)
-    header.Ping -> parse_ping_payload(frame_header, data)
-    header.GoAway -> parse_go_away_payload(frame_header, data)
-    header.WindowUpdate -> parse_window_update_payload(frame_header, data)
-    header.Continuation -> parse_continuation_payload(frame_header, data)
-    header.Unknown(_code) -> parse_unknown_payload(frame_header, data)
+    DataFrame -> parse_data_payload(frame_header, data)
+    HeadersFrame -> parse_headers_payload(frame_header, data)
+    PriorityFrame -> parse_priority_payload(frame_header, data)
+    RstStreamFrame -> parse_rst_stream_payload(frame_header, data)
+    SettingsFrame -> parse_settings_payload(frame_header, data)
+    PushPromiseFrame -> parse_push_promise_payload(frame_header, data)
+    PingFrame -> parse_ping_payload(frame_header, data)
+    GoAwayFrame -> parse_go_away_payload(frame_header, data)
+    WindowUpdateFrame -> parse_window_update_payload(frame_header, data)
+    ContinuationFrame -> parse_continuation_payload(frame_header, data)
+    UnknownFrame(_code) -> parse_unknown_payload(frame_header, data)
   }
 }
 
@@ -531,9 +679,9 @@ pub fn parse_payload(
 /// that follow the frame.
 pub fn parse(
   data: BitArray,
-) -> Result(#(header.FrameHeader, Payload, BitArray), FrameError) {
+) -> Result(#(FrameHeader, Payload, BitArray), FrameError) {
   use #(frame_header, remainder) <- result.try(
-    header.parse_header(data)
+    parse_header(data)
     |> result.map_error(HeaderError),
   )
 
@@ -548,7 +696,7 @@ pub fn encode_data(
   data data: BitArray,
   padding padding: Option(Int),
 ) -> Result(BitArray, FrameError) {
-  use <- bool.guard(stream_id == 0, Error(ConnectionError(error.ProtocolError)))
+  use <- bool.guard(stream_id == 0, Error(ConnectionError(ProtocolError)))
   use <- bool.guard(
     case padding {
       Some(p) -> p < 0 || p > 255
@@ -582,14 +730,14 @@ pub fn encode_data(
   }
 
   let frame_header =
-    header.FrameHeader(
+    FrameHeader(
       length: length,
       flags: flags,
-      frame_type: header.Data,
+      frame_type: DataFrame,
       stream_id: stream_id,
     )
 
-  let encoded_data = <<header.encode_header(frame_header):bits>>
+  let encoded_data = <<encode_header(frame_header):bits>>
 
   let encoded_data = case padded {
     True -> <<encoded_data:bits, pad_length:size(8)>>
@@ -612,7 +760,7 @@ pub fn encode_headers(
   data data: BitArray,
   padding padding: Option(Int),
 ) -> Result(BitArray, FrameError) {
-  use <- bool.guard(stream_id == 0, Error(ConnectionError(error.ProtocolError)))
+  use <- bool.guard(stream_id == 0, Error(ConnectionError(ProtocolError)))
   use <- bool.guard(
     case padding {
       Some(p) -> p < 0 || p > 255
@@ -661,14 +809,14 @@ pub fn encode_headers(
   }
 
   let frame_header =
-    header.FrameHeader(
+    FrameHeader(
       length: length,
-      frame_type: header.Headers,
+      frame_type: HeadersFrame,
       flags: flags,
       stream_id: stream_id,
     )
 
-  let encoded_data = <<header.encode_header(frame_header):bits>>
+  let encoded_data = <<encode_header(frame_header):bits>>
 
   let encoded_data = case padded {
     True -> <<encoded_data:bits, pad_length:size(8)>>
@@ -697,16 +845,16 @@ pub fn encode_priority(
   stream_dependency stream_dependency: Int,
   weight weight: Int,
 ) -> Result(BitArray, FrameError) {
-  use <- bool.guard(stream_id == 0, Error(ConnectionError(error.ProtocolError)))
+  use <- bool.guard(stream_id == 0, Error(ConnectionError(ProtocolError)))
 
   let length = 5
 
   let flags = 0
 
   let frame_header =
-    header.FrameHeader(
+    FrameHeader(
       length: length,
-      frame_type: header.Priority,
+      frame_type: PriorityFrame,
       flags: flags,
       stream_id: stream_id,
     )
@@ -719,32 +867,32 @@ pub fn encode_priority(
     )
 
   Ok(<<
-    header.encode_header(frame_header):bits,
+    encode_header(frame_header):bits,
     encode_stream_priority(stream_priority):bits,
   >>)
 }
 
 pub fn encode_rst_stream(
   stream_id stream_id: Int,
-  error_code error_code: error.ErrorCode,
+  error_code error_code: ErrorCode,
 ) -> Result(BitArray, FrameError) {
-  use <- bool.guard(stream_id == 0, Error(ConnectionError(error.ProtocolError)))
+  use <- bool.guard(stream_id == 0, Error(ConnectionError(ProtocolError)))
 
   let length = 4
 
   let flags = 0
 
   let frame_header =
-    header.FrameHeader(
+    FrameHeader(
       length: length,
-      frame_type: header.RstStream,
+      frame_type: RstStreamFrame,
       flags: flags,
       stream_id: stream_id,
     )
 
   Ok(<<
-    header.encode_header(frame_header):bits,
-    error.encode_error_code(error_code):size(32),
+    encode_header(frame_header):bits,
+    encode_error_code(error_code):size(32),
   >>)
 }
 
@@ -754,7 +902,7 @@ pub fn encode_settings(
 ) -> Result(BitArray, FrameError) {
   use <- bool.guard(
     ack == True && settings != [],
-    Error(ConnectionError(error.ProtocolError)),
+    Error(ConnectionError(ProtocolError)),
   )
 
   let stream_id = 0
@@ -771,14 +919,14 @@ pub fn encode_settings(
   let length = bit_array.byte_size(encoded_settings)
 
   let frame_header =
-    header.FrameHeader(
+    FrameHeader(
       length: length,
-      frame_type: header.Settings,
+      frame_type: SettingsFrame,
       flags: flags,
       stream_id: stream_id,
     )
 
-  Ok(<<header.encode_header(frame_header):bits, encoded_settings:bits>>)
+  Ok(<<encode_header(frame_header):bits, encoded_settings:bits>>)
 }
 
 pub fn encode_push_promise(
@@ -788,7 +936,7 @@ pub fn encode_push_promise(
   data data: BitArray,
   padding padding: Option(Int),
 ) -> Result(BitArray, FrameError) {
-  use <- bool.guard(stream_id == 0, Error(ConnectionError(error.ProtocolError)))
+  use <- bool.guard(stream_id == 0, Error(ConnectionError(ProtocolError)))
   use <- bool.guard(
     case padding {
       Some(p) -> p < 0 || p > 255
@@ -822,14 +970,14 @@ pub fn encode_push_promise(
   }
 
   let frame_header =
-    header.FrameHeader(
+    FrameHeader(
       length: length,
       flags: flags,
-      frame_type: header.PushPromise,
+      frame_type: PushPromiseFrame,
       stream_id: stream_id,
     )
 
-  let encoded_data = <<header.encode_header(frame_header):bits>>
+  let encoded_data = <<encode_header(frame_header):bits>>
 
   let encoded_data = case padded {
     True -> <<encoded_data:bits, pad_length:size(8)>>
@@ -856,7 +1004,7 @@ pub fn encode_ping(
 ) -> Result(BitArray, FrameError) {
   use <- bool.guard(
     bit_array.byte_size(data) != 8,
-    Error(ConnectionError(error.ProtocolError)),
+    Error(ConnectionError(ProtocolError)),
   )
 
   let stream_id = 0
@@ -871,19 +1019,19 @@ pub fn encode_ping(
   }
 
   let frame_header =
-    header.FrameHeader(
+    FrameHeader(
       length: length,
       flags: flags,
-      frame_type: header.Ping,
+      frame_type: PingFrame,
       stream_id: stream_id,
     )
 
-  Ok(<<header.encode_header(frame_header):bits, data:bits>>)
+  Ok(<<encode_header(frame_header):bits, data:bits>>)
 }
 
 pub fn encode_goaway(
   last_stream_id last_stream_id: Int,
-  error_code error_code: error.ErrorCode,
+  error_code error_code: ErrorCode,
   debug_data debug_data: BitArray,
 ) -> BitArray {
   let stream_id = 0
@@ -893,18 +1041,18 @@ pub fn encode_goaway(
   let flags = 0
 
   let frame_header =
-    header.FrameHeader(
+    FrameHeader(
       length: length,
       flags: flags,
-      frame_type: header.GoAway,
+      frame_type: GoAwayFrame,
       stream_id: stream_id,
     )
 
   <<
-    header.encode_header(frame_header):bits,
+    encode_header(frame_header):bits,
     0:size(1),
     last_stream_id:size(31),
-    error.encode_error_code(error_code):size(32),
+    encode_error_code(error_code):size(32),
     debug_data:bits,
   >>
 }
@@ -915,7 +1063,7 @@ pub fn encode_window_update(
 ) -> Result(BitArray, FrameError) {
   use <- bool.guard(
     window_size_increment == 0,
-    Error(ConnectionError(error.ProtocolError)),
+    Error(ConnectionError(ProtocolError)),
   )
 
   let length = 4
@@ -923,15 +1071,15 @@ pub fn encode_window_update(
   let flags = 0
 
   let frame_header =
-    header.FrameHeader(
+    FrameHeader(
       length: length,
       flags: flags,
-      frame_type: header.WindowUpdate,
+      frame_type: WindowUpdateFrame,
       stream_id: stream_id,
     )
 
   Ok(<<
-    header.encode_header(frame_header):bits,
+    encode_header(frame_header):bits,
     0:size(1),
     window_size_increment:size(31),
   >>)
@@ -942,7 +1090,7 @@ pub fn encode_continuation(
   end_headers end_headers: Bool,
   data data: BitArray,
 ) -> Result(BitArray, FrameError) {
-  use <- bool.guard(stream_id == 0, Error(ConnectionError(error.ProtocolError)))
+  use <- bool.guard(stream_id == 0, Error(ConnectionError(ProtocolError)))
 
   let length = bit_array.byte_size(data)
 
@@ -954,14 +1102,14 @@ pub fn encode_continuation(
   }
 
   let frame_header =
-    header.FrameHeader(
+    FrameHeader(
       length: length,
       flags: flags,
-      frame_type: header.Continuation,
+      frame_type: ContinuationFrame,
       stream_id: stream_id,
     )
 
-  Ok(<<header.encode_header(frame_header):bits, data:bits>>)
+  Ok(<<encode_header(frame_header):bits, data:bits>>)
 }
 
 pub fn encode_unknown(
@@ -974,12 +1122,12 @@ pub fn encode_unknown(
   let length = bit_array.byte_size(data)
 
   let frame_header =
-    header.FrameHeader(
+    FrameHeader(
       length: length,
       flags: flags,
-      frame_type: header.Unknown(frame_type_code),
+      frame_type: UnknownFrame(frame_type_code),
       stream_id: stream_id,
     )
 
-  <<header.encode_header(frame_header):bits, data:bits>>
+  <<encode_header(frame_header):bits, data:bits>>
 }

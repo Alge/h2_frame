@@ -1,102 +1,102 @@
 import gleam/list
 import gleeunit/should
-import h2_frame/error
+import h2_frame
 
 // RFC 9113 Section 7: Error codes are 32-bit fields used in RST_STREAM and GOAWAY frames
 
 pub fn parse_no_error_test() {
-  error.parse_error_code(0x00)
-  |> should.equal(error.NoError)
+  h2_frame.parse_error_code(0x00)
+  |> should.equal(h2_frame.NoError)
 }
 
 pub fn parse_protocol_error_test() {
-  error.parse_error_code(0x01)
-  |> should.equal(error.ProtocolError)
+  h2_frame.parse_error_code(0x01)
+  |> should.equal(h2_frame.ProtocolError)
 }
 
 pub fn parse_internal_error_test() {
-  error.parse_error_code(0x02)
-  |> should.equal(error.InternalError)
+  h2_frame.parse_error_code(0x02)
+  |> should.equal(h2_frame.InternalError)
 }
 
 pub fn parse_flow_control_error_test() {
-  error.parse_error_code(0x03)
-  |> should.equal(error.FlowControlError)
+  h2_frame.parse_error_code(0x03)
+  |> should.equal(h2_frame.FlowControlError)
 }
 
 pub fn parse_settings_timeout_test() {
-  error.parse_error_code(0x04)
-  |> should.equal(error.SettingsTimeout)
+  h2_frame.parse_error_code(0x04)
+  |> should.equal(h2_frame.SettingsTimeout)
 }
 
 pub fn parse_stream_closed_test() {
-  error.parse_error_code(0x05)
-  |> should.equal(error.StreamClosed)
+  h2_frame.parse_error_code(0x05)
+  |> should.equal(h2_frame.StreamClosed)
 }
 
 pub fn parse_frame_size_error_test() {
-  error.parse_error_code(0x06)
-  |> should.equal(error.FrameSizeError)
+  h2_frame.parse_error_code(0x06)
+  |> should.equal(h2_frame.FrameSizeError)
 }
 
 pub fn parse_refused_stream_test() {
-  error.parse_error_code(0x07)
-  |> should.equal(error.RefusedStream)
+  h2_frame.parse_error_code(0x07)
+  |> should.equal(h2_frame.RefusedStream)
 }
 
 pub fn parse_cancel_test() {
-  error.parse_error_code(0x08)
-  |> should.equal(error.Cancel)
+  h2_frame.parse_error_code(0x08)
+  |> should.equal(h2_frame.Cancel)
 }
 
 pub fn parse_compression_error_test() {
-  error.parse_error_code(0x09)
-  |> should.equal(error.CompressionError)
+  h2_frame.parse_error_code(0x09)
+  |> should.equal(h2_frame.CompressionError)
 }
 
 pub fn parse_connect_error_test() {
-  error.parse_error_code(0x0a)
-  |> should.equal(error.ConnectError)
+  h2_frame.parse_error_code(0x0a)
+  |> should.equal(h2_frame.ConnectError)
 }
 
 pub fn parse_enhance_your_calm_test() {
-  error.parse_error_code(0x0b)
-  |> should.equal(error.EnhanceYourCalm)
+  h2_frame.parse_error_code(0x0b)
+  |> should.equal(h2_frame.EnhanceYourCalm)
 }
 
 pub fn parse_inadequate_security_test() {
-  error.parse_error_code(0x0c)
-  |> should.equal(error.InadequateSecurity)
+  h2_frame.parse_error_code(0x0c)
+  |> should.equal(h2_frame.InadequateSecurity)
 }
 
 pub fn parse_http_1_1_required_test() {
-  error.parse_error_code(0x0d)
-  |> should.equal(error.Http11Required)
+  h2_frame.parse_error_code(0x0d)
+  |> should.equal(h2_frame.Http11Required)
 }
 
 pub fn parse_unknown_error_code_test() {
   // RFC 9113 Section 7: Unknown error codes MUST NOT trigger special behavior
-  error.parse_error_code(0xff)
-  |> should.equal(error.UnknownErrorCode(0xff))
+  h2_frame.parse_error_code(0xff)
+  |> should.equal(h2_frame.UnknownErrorCode(0xff))
 }
 
 pub fn encode_no_error_test() {
-  error.encode_error_code(error.NoError)
+  h2_frame.encode_error_code(h2_frame.NoError)
   |> should.equal(0x00)
 }
 
 pub fn encode_protocol_error_test() {
-  error.encode_error_code(error.ProtocolError)
+  h2_frame.encode_error_code(h2_frame.ProtocolError)
   |> should.equal(0x01)
 }
 
 pub fn encode_frame_size_error_test() {
-  error.encode_error_code(error.FrameSizeError)
+  h2_frame.encode_error_code(h2_frame.FrameSizeError)
   |> should.equal(0x06)
 }
 
 pub fn encode_unknown_error_code_test() {
-  error.encode_error_code(error.UnknownErrorCode(0xff))
+  h2_frame.encode_error_code(h2_frame.UnknownErrorCode(0xff))
   |> should.equal(0xff)
 }
 
@@ -107,8 +107,8 @@ pub fn roundtrip_all_error_codes_test() {
     0x0d, 0xff,
   ]
   list.each(codes, fn(code) {
-    error.parse_error_code(code)
-    |> error.encode_error_code()
+    h2_frame.parse_error_code(code)
+    |> h2_frame.encode_error_code()
     |> should.equal(code)
   })
 }
