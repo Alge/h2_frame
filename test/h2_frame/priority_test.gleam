@@ -85,7 +85,10 @@ pub fn parse_priority_wrong_length_test() {
   >>
   h2_frame.parse(data)
   |> should.equal(
-    Error(h2_frame.StreamError(stream_id: 1, error_code: h2_frame.FrameSizeError)),
+    Error(h2_frame.StreamError(
+      stream_id: 1,
+      error_code: h2_frame.FrameSizeError,
+    )),
   )
 }
 
@@ -97,7 +100,10 @@ pub fn parse_priority_too_long_test() {
   >>
   h2_frame.parse(data)
   |> should.equal(
-    Error(h2_frame.StreamError(stream_id: 1, error_code: h2_frame.FrameSizeError)),
+    Error(h2_frame.StreamError(
+      stream_id: 1,
+      error_code: h2_frame.FrameSizeError,
+    )),
   )
 }
 

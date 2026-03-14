@@ -296,7 +296,10 @@ fn parse_priority(data: BitArray) -> Result(#(Frame, BitArray), FrameError) {
       rest:bits,
     >> -> {
       // Parsing is done in two steps to be able to catch invalid lengths
-      use <- bool.guard(length != 5, Error(StreamError(stream_id: stream_id, error_code: FrameSizeError)))
+      use <- bool.guard(
+        length != 5,
+        Error(StreamError(stream_id: stream_id, error_code: FrameSizeError)),
+      )
 
       // stream_id cannot be 0
       use <- bool.guard(stream_id == 0, Error(ConnectionError(ProtocolError)))
