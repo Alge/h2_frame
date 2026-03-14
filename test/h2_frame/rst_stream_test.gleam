@@ -6,10 +6,14 @@ pub fn parse_rst_stream_test() {
   let data = <<
     4:size(24), 3:size(8), 0:size(8), 0:size(1), 1:size(31), 0x01:size(32),
   >>
-  let assert Ok(#(h, rest)) = h2_frame.parse_header(data)
-  h2_frame.parse_payload(h, rest)
+  h2_frame.parse(data)
   |> should.equal(
-    Ok(#(h2_frame.RstStream(error_code: h2_frame.ProtocolError), <<>>)),
+    Ok(
+      #(
+        h2_frame.RstStream(stream_id: 1, error_code: h2_frame.ProtocolError),
+        <<>>,
+      ),
+    ),
   )
 }
 
@@ -18,9 +22,10 @@ pub fn parse_rst_stream_no_error_test() {
   let data = <<
     4:size(24), 3:size(8), 0:size(8), 0:size(1), 1:size(31), 0x00:size(32),
   >>
-  let assert Ok(#(h, rest)) = h2_frame.parse_header(data)
-  h2_frame.parse_payload(h, rest)
-  |> should.equal(Ok(#(h2_frame.RstStream(error_code: h2_frame.NoError), <<>>)))
+  h2_frame.parse(data)
+  |> should.equal(
+    Ok(#(h2_frame.RstStream(stream_id: 1, error_code: h2_frame.NoError), <<>>)),
+  )
 }
 
 pub fn parse_rst_stream_cancel_test() {
@@ -28,9 +33,10 @@ pub fn parse_rst_stream_cancel_test() {
   let data = <<
     4:size(24), 3:size(8), 0:size(8), 0:size(1), 5:size(31), 0x08:size(32),
   >>
-  let assert Ok(#(h, rest)) = h2_frame.parse_header(data)
-  h2_frame.parse_payload(h, rest)
-  |> should.equal(Ok(#(h2_frame.RstStream(error_code: h2_frame.Cancel), <<>>)))
+  h2_frame.parse(data)
+  |> should.equal(
+    Ok(#(h2_frame.RstStream(stream_id: 5, error_code: h2_frame.Cancel), <<>>)),
+  )
 }
 
 pub fn parse_rst_stream_unknown_error_code_test() {
@@ -38,10 +44,17 @@ pub fn parse_rst_stream_unknown_error_code_test() {
   let data = <<
     4:size(24), 3:size(8), 0:size(8), 0:size(1), 1:size(31), 0xFF:size(32),
   >>
-  let assert Ok(#(h, rest)) = h2_frame.parse_header(data)
-  h2_frame.parse_payload(h, rest)
+  h2_frame.parse(data)
   |> should.equal(
-    Ok(#(h2_frame.RstStream(error_code: h2_frame.UnknownErrorCode(0xFF)), <<>>)),
+    Ok(
+      #(
+        h2_frame.RstStream(
+          stream_id: 1,
+          error_code: h2_frame.UnknownErrorCode(0xFF),
+        ),
+        <<>>,
+      ),
+    ),
   )
 }
 
@@ -50,8 +63,7 @@ pub fn parse_rst_stream_stream_id_zero_test() {
   let data = <<
     4:size(24), 3:size(8), 0:size(8), 0:size(1), 0:size(31), 0x01:size(32),
   >>
-  let assert Ok(#(h, rest)) = h2_frame.parse_header(data)
-  h2_frame.parse_payload(h, rest)
+  h2_frame.parse(data)
   |> should.equal(Error(h2_frame.ConnectionError(h2_frame.ProtocolError)))
 }
 
@@ -60,8 +72,7 @@ pub fn parse_rst_stream_wrong_length_short_test() {
   let data = <<
     3:size(24), 3:size(8), 0:size(8), 0:size(1), 1:size(31), 0, 0, 0,
   >>
-  let assert Ok(#(h, rest)) = h2_frame.parse_header(data)
-  h2_frame.parse_payload(h, rest)
+  h2_frame.parse(data)
   |> should.equal(Error(h2_frame.ConnectionError(h2_frame.FrameSizeError)))
 }
 
@@ -70,8 +81,7 @@ pub fn parse_rst_stream_wrong_length_long_test() {
   let data = <<
     5:size(24), 3:size(8), 0:size(8), 0:size(1), 1:size(31), 0x01:size(32), 0,
   >>
-  let assert Ok(#(h, rest)) = h2_frame.parse_header(data)
-  h2_frame.parse_payload(h, rest)
+  h2_frame.parse(data)
   |> should.equal(Error(h2_frame.ConnectionError(h2_frame.FrameSizeError)))
 }
 
@@ -80,19 +90,22 @@ pub fn parse_rst_stream_unknown_flags_ignored_test() {
   let data = <<
     4:size(24), 3:size(8), 0xFF:size(8), 0:size(1), 1:size(31), 0x01:size(32),
   >>
-  let assert Ok(#(h, rest)) = h2_frame.parse_header(data)
-  h2_frame.parse_payload(h, rest)
+  h2_frame.parse(data)
   |> should.equal(
-    Ok(#(h2_frame.RstStream(error_code: h2_frame.ProtocolError), <<>>)),
+    Ok(
+      #(
+        h2_frame.RstStream(stream_id: 1, error_code: h2_frame.ProtocolError),
+        <<>>,
+      ),
+    ),
   )
 }
 
 pub fn parse_rst_stream_truncated_payload_test() {
   // RFC 9113 Section 6.4: Incomplete payload
   let data = <<4:size(24), 3:size(8), 0:size(8), 0:size(1), 1:size(31), 0, 0>>
-  let assert Ok(#(h, rest)) = h2_frame.parse_header(data)
-  h2_frame.parse_payload(h, rest)
-  |> should.equal(Error(h2_frame.IncompletePayload))
+  h2_frame.parse(data)
+  |> should.equal(Error(h2_frame.Incomplete))
 }
 
 pub fn parse_rst_stream_with_trailing_data_test() {
@@ -101,89 +114,68 @@ pub fn parse_rst_stream_with_trailing_data_test() {
     4:size(24), 3:size(8), 0:size(8), 0:size(1), 1:size(31), 0x01:size(32), 99,
     99,
   >>
-  let assert Ok(#(h, rest)) = h2_frame.parse_header(data)
-  h2_frame.parse_payload(h, rest)
+  h2_frame.parse(data)
   |> should.equal(
-    Ok(#(h2_frame.RstStream(error_code: h2_frame.ProtocolError), <<99, 99>>)),
+    Ok(
+      #(h2_frame.RstStream(stream_id: 1, error_code: h2_frame.ProtocolError), <<
+        99,
+        99,
+      >>),
+    ),
   )
 }
 
 // --- Encode tests ---
 
 pub fn encode_rst_stream_test() {
-  // RFC 9113 Section 6.4: RST_STREAM with PROTOCOL_ERROR
   h2_frame.encode_rst_stream(stream_id: 1, error_code: h2_frame.ProtocolError)
   |> should.equal(
     Ok(<<
-      4:size(24),
-      3:size(8),
-      0:size(8),
-      0:size(1),
-      1:size(31),
-      0x01:size(32),
+      4:size(24), 3:size(8), 0:size(8), 0:size(1), 1:size(31), 0x01:size(32),
     >>),
   )
 }
 
 pub fn encode_rst_stream_no_error_test() {
-  // RFC 9113 Section 6.4: RST_STREAM with NO_ERROR
   h2_frame.encode_rst_stream(stream_id: 1, error_code: h2_frame.NoError)
   |> should.equal(
     Ok(<<
-      4:size(24),
-      3:size(8),
-      0:size(8),
-      0:size(1),
-      1:size(31),
-      0x00:size(32),
+      4:size(24), 3:size(8), 0:size(8), 0:size(1), 1:size(31), 0x00:size(32),
     >>),
   )
 }
 
 pub fn encode_rst_stream_cancel_test() {
-  // RFC 9113 Section 6.4: RST_STREAM with CANCEL
   h2_frame.encode_rst_stream(stream_id: 5, error_code: h2_frame.Cancel)
   |> should.equal(
     Ok(<<
-      4:size(24),
-      3:size(8),
-      0:size(8),
-      0:size(1),
-      5:size(31),
-      0x08:size(32),
+      4:size(24), 3:size(8), 0:size(8), 0:size(1), 5:size(31), 0x08:size(32),
     >>),
   )
 }
 
 pub fn encode_rst_stream_unknown_error_code_test() {
-  // RFC 9113 Section 7: Unknown error codes are valid
   h2_frame.encode_rst_stream(
     stream_id: 1,
     error_code: h2_frame.UnknownErrorCode(0xFF),
   )
   |> should.equal(
     Ok(<<
-      4:size(24),
-      3:size(8),
-      0:size(8),
-      0:size(1),
-      1:size(31),
-      0xFF:size(32),
+      4:size(24), 3:size(8), 0:size(8), 0:size(1), 1:size(31), 0xFF:size(32),
     >>),
   )
 }
 
 pub fn encode_rst_stream_stream_id_zero_test() {
-  // RFC 9113 Section 6.4: RST_STREAM MUST be associated with a stream
   h2_frame.encode_rst_stream(stream_id: 0, error_code: h2_frame.ProtocolError)
-  |> should.be_error()
+  |> should.equal(Error(h2_frame.ConnectionError(h2_frame.ProtocolError)))
 }
 
 pub fn encode_rst_stream_roundtrip_test() {
-  // Encode then parse should produce the same values
   let assert Ok(encoded) =
     h2_frame.encode_rst_stream(stream_id: 3, error_code: h2_frame.Cancel)
-  let assert Ok(#(h, rest)) = h2_frame.parse_header(encoded)
-  h2_frame.parse_payload(h, rest)
-  |> should.equal(Ok(#(h2_frame.RstStream(error_code: h2_frame.Cancel), <<>>)))
+  h2_frame.parse(encoded)
+  |> should.equal(
+    Ok(#(h2_frame.RstStream(stream_id: 3, error_code: h2_frame.Cancel), <<>>)),
+  )
 }

@@ -7,16 +7,16 @@ pub fn parse_headers_test() {
   let data = <<
     5:size(24), 1:size(8), 0:size(8), 0:size(1), 1:size(31), "hello":utf8,
   >>
-  let assert Ok(#(h, rest)) = h2_frame.parse_header(data)
-  h2_frame.parse_payload(h, rest)
+  h2_frame.parse(data)
   |> should.equal(
     Ok(
       #(
         h2_frame.Headers(
+          stream_id: 1,
           end_stream: False,
           end_headers: False,
           priority: None,
-          data: <<"hello":utf8>>,
+          field_block_fragment: <<"hello":utf8>>,
         ),
         <<>>,
       ),
@@ -29,16 +29,16 @@ pub fn parse_headers_end_stream_test() {
   let data = <<
     3:size(24), 1:size(8), 1:size(8), 0:size(1), 1:size(31), "abc":utf8,
   >>
-  let assert Ok(#(h, rest)) = h2_frame.parse_header(data)
-  h2_frame.parse_payload(h, rest)
+  h2_frame.parse(data)
   |> should.equal(
     Ok(
       #(
         h2_frame.Headers(
+          stream_id: 1,
           end_stream: True,
           end_headers: False,
           priority: None,
-          data: <<"abc":utf8>>,
+          field_block_fragment: <<"abc":utf8>>,
         ),
         <<>>,
       ),
@@ -51,16 +51,16 @@ pub fn parse_headers_end_headers_test() {
   let data = <<
     3:size(24), 1:size(8), 4:size(8), 0:size(1), 1:size(31), "abc":utf8,
   >>
-  let assert Ok(#(h, rest)) = h2_frame.parse_header(data)
-  h2_frame.parse_payload(h, rest)
+  h2_frame.parse(data)
   |> should.equal(
     Ok(
       #(
         h2_frame.Headers(
+          stream_id: 1,
           end_stream: False,
           end_headers: True,
           priority: None,
-          data: <<"abc":utf8>>,
+          field_block_fragment: <<"abc":utf8>>,
         ),
         <<>>,
       ),
@@ -73,16 +73,16 @@ pub fn parse_headers_end_stream_and_end_headers_test() {
   let data = <<
     3:size(24), 1:size(8), 5:size(8), 0:size(1), 1:size(31), "abc":utf8,
   >>
-  let assert Ok(#(h, rest)) = h2_frame.parse_header(data)
-  h2_frame.parse_payload(h, rest)
+  h2_frame.parse(data)
   |> should.equal(
     Ok(
       #(
         h2_frame.Headers(
+          stream_id: 1,
           end_stream: True,
           end_headers: True,
           priority: None,
-          data: <<"abc":utf8>>,
+          field_block_fragment: <<"abc":utf8>>,
         ),
         <<>>,
       ),
@@ -97,12 +97,12 @@ pub fn parse_headers_priority_test() {
     7:size(24), 1:size(8), 0x20:size(8), 0:size(1), 1:size(31), 0:size(1),
     3:size(31), 15:size(8), "ab":utf8,
   >>
-  let assert Ok(#(h, rest)) = h2_frame.parse_header(data)
-  h2_frame.parse_payload(h, rest)
+  h2_frame.parse(data)
   |> should.equal(
     Ok(
       #(
         h2_frame.Headers(
+          stream_id: 1,
           end_stream: False,
           end_headers: False,
           priority: Some(h2_frame.StreamPriority(
@@ -110,7 +110,7 @@ pub fn parse_headers_priority_test() {
             stream_dependency: 3,
             weight: 15,
           )),
-          data: <<"ab":utf8>>,
+          field_block_fragment: <<"ab":utf8>>,
         ),
         <<>>,
       ),
@@ -124,12 +124,12 @@ pub fn parse_headers_priority_exclusive_test() {
     7:size(24), 1:size(8), 0x20:size(8), 0:size(1), 1:size(31), 1:size(1),
     5:size(31), 255:size(8), "ab":utf8,
   >>
-  let assert Ok(#(h, rest)) = h2_frame.parse_header(data)
-  h2_frame.parse_payload(h, rest)
+  h2_frame.parse(data)
   |> should.equal(
     Ok(
       #(
         h2_frame.Headers(
+          stream_id: 1,
           end_stream: False,
           end_headers: False,
           priority: Some(h2_frame.StreamPriority(
@@ -137,7 +137,7 @@ pub fn parse_headers_priority_exclusive_test() {
             stream_dependency: 5,
             weight: 255,
           )),
-          data: <<"ab":utf8>>,
+          field_block_fragment: <<"ab":utf8>>,
         ),
         <<>>,
       ),
@@ -152,16 +152,16 @@ pub fn parse_headers_padded_test() {
     6:size(24), 1:size(8), 8:size(8), 0:size(1), 1:size(31), 2:size(8),
     "abc":utf8, 0, 0,
   >>
-  let assert Ok(#(h, rest)) = h2_frame.parse_header(data)
-  h2_frame.parse_payload(h, rest)
+  h2_frame.parse(data)
   |> should.equal(
     Ok(
       #(
         h2_frame.Headers(
+          stream_id: 1,
           end_stream: False,
           end_headers: False,
           priority: None,
-          data: <<"abc":utf8>>,
+          field_block_fragment: <<"abc":utf8>>,
         ),
         <<>>,
       ),
@@ -177,12 +177,12 @@ pub fn parse_headers_padded_and_priority_test() {
     10:size(24), 1:size(8), 0x28:size(8), 0:size(1), 1:size(31), 2:size(8),
     1:size(1), 7:size(31), 100:size(8), "ab":utf8, 0, 0,
   >>
-  let assert Ok(#(h, rest)) = h2_frame.parse_header(data)
-  h2_frame.parse_payload(h, rest)
+  h2_frame.parse(data)
   |> should.equal(
     Ok(
       #(
         h2_frame.Headers(
+          stream_id: 1,
           end_stream: False,
           end_headers: False,
           priority: Some(h2_frame.StreamPriority(
@@ -190,7 +190,7 @@ pub fn parse_headers_padded_and_priority_test() {
             stream_dependency: 7,
             weight: 100,
           )),
-          data: <<"ab":utf8>>,
+          field_block_fragment: <<"ab":utf8>>,
         ),
         <<>>,
       ),
@@ -205,12 +205,12 @@ pub fn parse_headers_all_flags_test() {
     8:size(24), 1:size(8), 0x2D:size(8), 0:size(1), 1:size(31), 1:size(8),
     0:size(1), 0:size(31), 0:size(8), "x":utf8, 0,
   >>
-  let assert Ok(#(h, rest)) = h2_frame.parse_header(data)
-  h2_frame.parse_payload(h, rest)
+  h2_frame.parse(data)
   |> should.equal(
     Ok(
       #(
         h2_frame.Headers(
+          stream_id: 1,
           end_stream: True,
           end_headers: True,
           priority: Some(h2_frame.StreamPriority(
@@ -218,7 +218,7 @@ pub fn parse_headers_all_flags_test() {
             stream_dependency: 0,
             weight: 0,
           )),
-          data: <<"x":utf8>>,
+          field_block_fragment: <<"x":utf8>>,
         ),
         <<>>,
       ),
@@ -231,8 +231,7 @@ pub fn parse_headers_stream_id_zero_test() {
   let data = <<
     3:size(24), 1:size(8), 0:size(8), 0:size(1), 0:size(31), "abc":utf8,
   >>
-  let assert Ok(#(h, rest)) = h2_frame.parse_header(data)
-  h2_frame.parse_payload(h, rest)
+  h2_frame.parse(data)
   |> should.equal(Error(h2_frame.ConnectionError(h2_frame.ProtocolError)))
 }
 
@@ -242,8 +241,7 @@ pub fn parse_headers_padding_exceeds_payload_test() {
   let data = <<
     3:size(24), 1:size(8), 8:size(8), 0:size(1), 1:size(31), 3:size(8), 0, 0,
   >>
-  let assert Ok(#(h, rest)) = h2_frame.parse_header(data)
-  h2_frame.parse_payload(h, rest)
+  h2_frame.parse(data)
   |> should.equal(Error(h2_frame.ConnectionError(h2_frame.ProtocolError)))
 }
 
@@ -254,8 +252,7 @@ pub fn parse_headers_padded_priority_padding_exceeds_test() {
     7:size(24), 1:size(8), 0x28:size(8), 0:size(1), 1:size(31), 2:size(8),
     0:size(1), 0:size(31), 0:size(8), 0,
   >>
-  let assert Ok(#(h, rest)) = h2_frame.parse_header(data)
-  h2_frame.parse_payload(h, rest)
+  h2_frame.parse(data)
   |> should.equal(Error(h2_frame.ConnectionError(h2_frame.ProtocolError)))
 }
 
@@ -265,24 +262,23 @@ pub fn parse_headers_priority_truncated_test() {
   let data = <<
     3:size(24), 1:size(8), 0x20:size(8), 0:size(1), 1:size(31), 0, 0, 0,
   >>
-  let assert Ok(#(h, rest)) = h2_frame.parse_header(data)
-  h2_frame.parse_payload(h, rest)
-  |> should.equal(Error(h2_frame.IncompletePayload))
+  h2_frame.parse(data)
+  |> should.equal(Error(h2_frame.Incomplete))
 }
 
 pub fn parse_headers_empty_fragment_test() {
   // RFC 9113 Section 6.2: HEADERS frame with empty fragment is valid
   let data = <<0:size(24), 1:size(8), 0:size(8), 0:size(1), 1:size(31)>>
-  let assert Ok(#(h, rest)) = h2_frame.parse_header(data)
-  h2_frame.parse_payload(h, rest)
+  h2_frame.parse(data)
   |> should.equal(
     Ok(
       #(
         h2_frame.Headers(
+          stream_id: 1,
           end_stream: False,
           end_headers: False,
           priority: None,
-          data: <<>>,
+          field_block_fragment: <<>>,
         ),
         <<>>,
       ),
@@ -296,16 +292,16 @@ pub fn parse_headers_unknown_flags_ignored_test() {
   let data = <<
     3:size(24), 1:size(8), 0xD2:size(8), 0:size(1), 1:size(31), "abc":utf8,
   >>
-  let assert Ok(#(h, rest)) = h2_frame.parse_header(data)
-  h2_frame.parse_payload(h, rest)
+  h2_frame.parse(data)
   |> should.equal(
     Ok(
       #(
         h2_frame.Headers(
+          stream_id: 1,
           end_stream: False,
           end_headers: False,
           priority: None,
-          data: <<"abc":utf8>>,
+          field_block_fragment: <<"abc":utf8>>,
         ),
         <<>>,
       ),
@@ -318,9 +314,8 @@ pub fn parse_headers_truncated_payload_test() {
   let data = <<
     10:size(24), 1:size(8), 0:size(8), 0:size(1), 1:size(31), "short":utf8,
   >>
-  let assert Ok(#(h, rest)) = h2_frame.parse_header(data)
-  h2_frame.parse_payload(h, rest)
-  |> should.equal(Error(h2_frame.IncompletePayload))
+  h2_frame.parse(data)
+  |> should.equal(Error(h2_frame.Incomplete))
 }
 
 pub fn parse_headers_with_trailing_data_test() {
@@ -328,16 +323,16 @@ pub fn parse_headers_with_trailing_data_test() {
   let data = <<
     3:size(24), 1:size(8), 0:size(8), 0:size(1), 1:size(31), "abc":utf8, 99, 99,
   >>
-  let assert Ok(#(h, rest)) = h2_frame.parse_header(data)
-  h2_frame.parse_payload(h, rest)
+  h2_frame.parse(data)
   |> should.equal(
     Ok(
       #(
         h2_frame.Headers(
+          stream_id: 1,
           end_stream: False,
           end_headers: False,
           priority: None,
-          data: <<"abc":utf8>>,
+          field_block_fragment: <<"abc":utf8>>,
         ),
         <<99, 99>>,
       ),
@@ -348,9 +343,8 @@ pub fn parse_headers_with_trailing_data_test() {
 pub fn parse_headers_padded_empty_payload_test() {
   // RFC 9113 Section 6.2: PADDED flag set but no payload bytes at all
   let data = <<5:size(24), 1:size(8), 8:size(8), 0:size(1), 1:size(31)>>
-  let assert Ok(#(h, rest)) = h2_frame.parse_header(data)
-  h2_frame.parse_payload(h, rest)
-  |> should.equal(Error(h2_frame.IncompletePayload))
+  h2_frame.parse(data)
+  |> should.equal(Error(h2_frame.Incomplete))
 }
 
 // --- Encode tests ---
@@ -362,7 +356,7 @@ pub fn encode_headers_test() {
     end_stream: False,
     end_headers: False,
     priority: None,
-    data: <<"hello":utf8>>,
+    field_block_fragment: <<"hello":utf8>>,
     padding: None,
   )
   |> should.equal(
@@ -377,7 +371,7 @@ pub fn encode_headers_end_stream_test() {
     end_stream: True,
     end_headers: False,
     priority: None,
-    data: <<"abc":utf8>>,
+    field_block_fragment: <<"abc":utf8>>,
     padding: None,
   )
   |> should.equal(
@@ -392,7 +386,7 @@ pub fn encode_headers_end_headers_test() {
     end_stream: False,
     end_headers: True,
     priority: None,
-    data: <<"abc":utf8>>,
+    field_block_fragment: <<"abc":utf8>>,
     padding: None,
   )
   |> should.equal(
@@ -407,7 +401,7 @@ pub fn encode_headers_end_stream_and_end_headers_test() {
     end_stream: True,
     end_headers: True,
     priority: None,
-    data: <<"abc":utf8>>,
+    field_block_fragment: <<"abc":utf8>>,
     padding: None,
   )
   |> should.equal(
@@ -426,7 +420,7 @@ pub fn encode_headers_priority_test() {
       stream_dependency: 3,
       weight: 15,
     )),
-    data: <<"ab":utf8>>,
+    field_block_fragment: <<"ab":utf8>>,
     padding: None,
   )
   |> should.equal(
@@ -448,7 +442,7 @@ pub fn encode_headers_priority_exclusive_test() {
       stream_dependency: 5,
       weight: 255,
     )),
-    data: <<"ab":utf8>>,
+    field_block_fragment: <<"ab":utf8>>,
     padding: None,
   )
   |> should.equal(
@@ -466,7 +460,7 @@ pub fn encode_headers_padded_test() {
     end_stream: False,
     end_headers: False,
     priority: None,
-    data: <<"abc":utf8>>,
+    field_block_fragment: <<"abc":utf8>>,
     padding: Some(2),
   )
   |> should.equal(
@@ -488,7 +482,7 @@ pub fn encode_headers_padded_and_priority_test() {
       stream_dependency: 7,
       weight: 100,
     )),
-    data: <<"ab":utf8>>,
+    field_block_fragment: <<"ab":utf8>>,
     padding: Some(2),
   )
   |> should.equal(
@@ -510,7 +504,7 @@ pub fn encode_headers_all_flags_test() {
       stream_dependency: 0,
       weight: 0,
     )),
-    data: <<"x":utf8>>,
+    field_block_fragment: <<"x":utf8>>,
     padding: Some(1),
   )
   |> should.equal(
@@ -528,7 +522,7 @@ pub fn encode_headers_empty_fragment_test() {
     end_stream: False,
     end_headers: False,
     priority: None,
-    data: <<>>,
+    field_block_fragment: <<>>,
     padding: None,
   )
   |> should.equal(
@@ -543,10 +537,10 @@ pub fn encode_headers_stream_id_zero_test() {
     end_stream: False,
     end_headers: False,
     priority: None,
-    data: <<"abc":utf8>>,
+    field_block_fragment: <<"abc":utf8>>,
     padding: None,
   )
-  |> should.be_error()
+  |> should.equal(Error(h2_frame.ConnectionError(h2_frame.ProtocolError)))
 }
 
 pub fn encode_headers_padding_negative_test() {
@@ -556,7 +550,7 @@ pub fn encode_headers_padding_negative_test() {
     end_stream: False,
     end_headers: False,
     priority: None,
-    data: <<"abc":utf8>>,
+    field_block_fragment: <<"abc":utf8>>,
     padding: Some(-1),
   )
   |> should.equal(Error(h2_frame.InvalidPadding))
@@ -569,7 +563,7 @@ pub fn encode_headers_padding_exceeds_byte_test() {
     end_stream: False,
     end_headers: False,
     priority: None,
-    data: <<"abc":utf8>>,
+    field_block_fragment: <<"abc":utf8>>,
     padding: Some(256),
   )
   |> should.equal(Error(h2_frame.InvalidPadding))
@@ -583,19 +577,19 @@ pub fn encode_headers_roundtrip_test() {
       end_stream: True,
       end_headers: True,
       priority: None,
-      data: <<"test":utf8>>,
+      field_block_fragment: <<"test":utf8>>,
       padding: None,
     )
-  let assert Ok(#(h, rest)) = h2_frame.parse_header(encoded)
-  h2_frame.parse_payload(h, rest)
+  h2_frame.parse(encoded)
   |> should.equal(
     Ok(
       #(
         h2_frame.Headers(
+          stream_id: 5,
           end_stream: True,
           end_headers: True,
           priority: None,
-          data: <<"test":utf8>>,
+          field_block_fragment: <<"test":utf8>>,
         ),
         <<>>,
       ),
@@ -615,15 +609,15 @@ pub fn encode_headers_padded_priority_roundtrip_test() {
         stream_dependency: 10,
         weight: 42,
       )),
-      data: <<"hpack":utf8>>,
+      field_block_fragment: <<"hpack":utf8>>,
       padding: Some(4),
     )
-  let assert Ok(#(h, rest)) = h2_frame.parse_header(encoded)
-  h2_frame.parse_payload(h, rest)
+  h2_frame.parse(encoded)
   |> should.equal(
     Ok(
       #(
         h2_frame.Headers(
+          stream_id: 3,
           end_stream: False,
           end_headers: True,
           priority: Some(h2_frame.StreamPriority(
@@ -631,7 +625,7 @@ pub fn encode_headers_padded_priority_roundtrip_test() {
             stream_dependency: 10,
             weight: 42,
           )),
-          data: <<"hpack":utf8>>,
+          field_block_fragment: <<"hpack":utf8>>,
         ),
         <<>>,
       ),

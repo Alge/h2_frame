@@ -17,21 +17,10 @@ gleam add h2_frame
 
 ### Parsing
 
-Parse a full frame (header + payload) in one step:
-
 ```gleam
 import h2_frame
 
-let assert Ok(#(frame_header, payload, rest)) = h2_frame.parse(data)
-```
-
-Or parse the header and payload separately for more control:
-
-```gleam
-import h2_frame
-
-let assert Ok(#(frame_header, rest)) = h2_frame.parse_header(data)
-let assert Ok(#(payload, rest)) = h2_frame.parse_payload(frame_header, rest)
+let assert Ok(#(frame, rest)) = h2_frame.parse(data)
 ```
 
 ### Encoding

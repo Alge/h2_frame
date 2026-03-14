@@ -8,12 +8,16 @@ pub fn parse_priority_test() {
     5:size(24), 2:size(8), 0:size(8), 0:size(1), 1:size(31), 0:size(1),
     3:size(31), 15:size(8),
   >>
-  let assert Ok(#(h, rest)) = h2_frame.parse_header(data)
-  h2_frame.parse_payload(h, rest)
+  h2_frame.parse(data)
   |> should.equal(
     Ok(
       #(
-        h2_frame.Priority(exclusive: False, stream_dependency: 3, weight: 15),
+        h2_frame.Priority(
+          stream_id: 1,
+          exclusive: False,
+          stream_dependency: 3,
+          weight: 15,
+        ),
         <<>>,
       ),
     ),
@@ -26,12 +30,16 @@ pub fn parse_priority_exclusive_test() {
     5:size(24), 2:size(8), 0:size(8), 0:size(1), 1:size(31), 1:size(1),
     5:size(31), 255:size(8),
   >>
-  let assert Ok(#(h, rest)) = h2_frame.parse_header(data)
-  h2_frame.parse_payload(h, rest)
+  h2_frame.parse(data)
   |> should.equal(
     Ok(
       #(
-        h2_frame.Priority(exclusive: True, stream_dependency: 5, weight: 255),
+        h2_frame.Priority(
+          stream_id: 1,
+          exclusive: True,
+          stream_dependency: 5,
+          weight: 255,
+        ),
         <<>>,
       ),
     ),
@@ -44,12 +52,16 @@ pub fn parse_priority_zero_weight_test() {
     5:size(24), 2:size(8), 0:size(8), 0:size(1), 1:size(31), 0:size(1),
     0:size(31), 0:size(8),
   >>
-  let assert Ok(#(h, rest)) = h2_frame.parse_header(data)
-  h2_frame.parse_payload(h, rest)
+  h2_frame.parse(data)
   |> should.equal(
     Ok(
       #(
-        h2_frame.Priority(exclusive: False, stream_dependency: 0, weight: 0),
+        h2_frame.Priority(
+          stream_id: 1,
+          exclusive: False,
+          stream_dependency: 0,
+          weight: 0,
+        ),
         <<>>,
       ),
     ),
@@ -62,8 +74,7 @@ pub fn parse_priority_stream_id_zero_test() {
     5:size(24), 2:size(8), 0:size(8), 0:size(1), 0:size(31), 0:size(1),
     3:size(31), 15:size(8),
   >>
-  let assert Ok(#(h, rest)) = h2_frame.parse_header(data)
-  h2_frame.parse_payload(h, rest)
+  h2_frame.parse(data)
   |> should.equal(Error(h2_frame.ConnectionError(h2_frame.ProtocolError)))
 }
 
@@ -73,8 +84,7 @@ pub fn parse_priority_wrong_length_test() {
   let data = <<
     4:size(24), 2:size(8), 0:size(8), 0:size(1), 1:size(31), 0, 0, 0, 0,
   >>
-  let assert Ok(#(h, rest)) = h2_frame.parse_header(data)
-  h2_frame.parse_payload(h, rest)
+  h2_frame.parse(data)
   |> should.equal(Error(h2_frame.ConnectionError(h2_frame.FrameSizeError)))
 }
 
@@ -84,8 +94,7 @@ pub fn parse_priority_too_long_test() {
     6:size(24), 2:size(8), 0:size(8), 0:size(1), 1:size(31), 0:size(1),
     3:size(31), 15:size(8), 0,
   >>
-  let assert Ok(#(h, rest)) = h2_frame.parse_header(data)
-  h2_frame.parse_payload(h, rest)
+  h2_frame.parse(data)
   |> should.equal(Error(h2_frame.ConnectionError(h2_frame.FrameSizeError)))
 }
 
@@ -95,12 +104,16 @@ pub fn parse_priority_unknown_flags_ignored_test() {
     5:size(24), 2:size(8), 0xFF:size(8), 0:size(1), 1:size(31), 0:size(1),
     3:size(31), 15:size(8),
   >>
-  let assert Ok(#(h, rest)) = h2_frame.parse_header(data)
-  h2_frame.parse_payload(h, rest)
+  h2_frame.parse(data)
   |> should.equal(
     Ok(
       #(
-        h2_frame.Priority(exclusive: False, stream_dependency: 3, weight: 15),
+        h2_frame.Priority(
+          stream_id: 1,
+          exclusive: False,
+          stream_dependency: 3,
+          weight: 15,
+        ),
         <<>>,
       ),
     ),
@@ -112,9 +125,8 @@ pub fn parse_priority_truncated_payload_test() {
   let data = <<
     5:size(24), 2:size(8), 0:size(8), 0:size(1), 1:size(31), 0, 0, 0,
   >>
-  let assert Ok(#(h, rest)) = h2_frame.parse_header(data)
-  h2_frame.parse_payload(h, rest)
-  |> should.equal(Error(h2_frame.IncompletePayload))
+  h2_frame.parse(data)
+  |> should.equal(Error(h2_frame.Incomplete))
 }
 
 pub fn parse_priority_with_trailing_data_test() {
@@ -123,14 +135,18 @@ pub fn parse_priority_with_trailing_data_test() {
     5:size(24), 2:size(8), 0:size(8), 0:size(1), 1:size(31), 0:size(1),
     3:size(31), 15:size(8), 99, 99,
   >>
-  let assert Ok(#(h, rest)) = h2_frame.parse_header(data)
-  h2_frame.parse_payload(h, rest)
+  h2_frame.parse(data)
   |> should.equal(
     Ok(
-      #(h2_frame.Priority(exclusive: False, stream_dependency: 3, weight: 15), <<
-        99,
-        99,
-      >>),
+      #(
+        h2_frame.Priority(
+          stream_id: 1,
+          exclusive: False,
+          stream_dependency: 3,
+          weight: 15,
+        ),
+        <<99, 99>>,
+      ),
     ),
   )
 }
@@ -193,7 +209,7 @@ pub fn encode_priority_stream_id_zero_test() {
     stream_dependency: 3,
     weight: 15,
   )
-  |> should.be_error()
+  |> should.equal(Error(h2_frame.ConnectionError(h2_frame.ProtocolError)))
 }
 
 pub fn encode_priority_roundtrip_test() {
@@ -205,12 +221,16 @@ pub fn encode_priority_roundtrip_test() {
       stream_dependency: 10,
       weight: 42,
     )
-  let assert Ok(#(h, rest)) = h2_frame.parse_header(encoded)
-  h2_frame.parse_payload(h, rest)
+  h2_frame.parse(encoded)
   |> should.equal(
     Ok(
       #(
-        h2_frame.Priority(exclusive: True, stream_dependency: 10, weight: 42),
+        h2_frame.Priority(
+          stream_id: 7,
+          exclusive: True,
+          stream_dependency: 10,
+          weight: 42,
+        ),
         <<>>,
       ),
     ),
