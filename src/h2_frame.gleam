@@ -63,7 +63,8 @@ pub fn encode_error_code(error_code: ErrorCode) -> Int {
 }
 
 pub type FrameError {
-  ConnectionError(ErrorCode)
+  ConnectionError(error_code: ErrorCode)
+  StreamError(stream_id: Int, error_code: ErrorCode)
   Incomplete
   InvalidPadding
 }
@@ -295,7 +296,7 @@ fn parse_priority(data: BitArray) -> Result(#(Frame, BitArray), FrameError) {
       rest:bits,
     >> -> {
       // Parsing is done in two steps to be able to catch invalid lengths
-      use <- bool.guard(length != 5, Error(ConnectionError(FrameSizeError)))
+      use <- bool.guard(length != 5, Error(StreamError(stream_id: stream_id, error_code: FrameSizeError)))
 
       // stream_id cannot be 0
       use <- bool.guard(stream_id == 0, Error(ConnectionError(ProtocolError)))
@@ -511,8 +512,12 @@ fn parse_window_update(data: BitArray) -> Result(#(Frame, BitArray), FrameError)
       case payload {
         <<_reserved:size(1), window_size_increment:size(31)>> -> {
           use <- bool.guard(
-            window_size_increment == 0,
+            window_size_increment == 0 && stream_id == 0,
             Error(ConnectionError(ProtocolError)),
+          )
+          use <- bool.guard(
+            window_size_increment == 0 && stream_id != 0,
+            Error(StreamError(stream_id: stream_id, error_code: ProtocolError)),
           )
           Ok(#(
             WindowUpdate(

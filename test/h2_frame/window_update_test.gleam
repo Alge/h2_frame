@@ -54,13 +54,15 @@ pub fn parse_window_update_max_increment_test() {
 
 pub fn parse_window_update_zero_increment_stream_test() {
   // RFC 9113 Section 6.9: Increment of 0 on a stream MUST be treated as
-  // stream error PROTOCOL_ERROR. We report as ConnectionError since we have no stream context.
+  // stream error PROTOCOL_ERROR
   let data = <<
     4:size(24), 8:size(8), 0:size(8), 0:size(1), 1:size(31), 0:size(1),
     0:size(31),
   >>
   h2_frame.parse(data)
-  |> should.equal(Error(h2_frame.ConnectionError(h2_frame.ProtocolError)))
+  |> should.equal(
+    Error(h2_frame.StreamError(stream_id: 1, error_code: h2_frame.ProtocolError)),
+  )
 }
 
 pub fn parse_window_update_zero_increment_connection_test() {

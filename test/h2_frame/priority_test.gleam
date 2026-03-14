@@ -80,22 +80,25 @@ pub fn parse_priority_stream_id_zero_test() {
 
 pub fn parse_priority_wrong_length_test() {
   // RFC 9113 Section 6.3: Length other than 5 MUST be treated as stream error FRAME_SIZE_ERROR
-  // Note: For a parser library we treat this as a connection error since we have no stream context
   let data = <<
     4:size(24), 2:size(8), 0:size(8), 0:size(1), 1:size(31), 0, 0, 0, 0,
   >>
   h2_frame.parse(data)
-  |> should.equal(Error(h2_frame.ConnectionError(h2_frame.FrameSizeError)))
+  |> should.equal(
+    Error(h2_frame.StreamError(stream_id: 1, error_code: h2_frame.FrameSizeError)),
+  )
 }
 
 pub fn parse_priority_too_long_test() {
-  // RFC 9113 Section 6.3: Length greater than 5 is also FRAME_SIZE_ERROR
+  // RFC 9113 Section 6.3: Length greater than 5 is also stream error FRAME_SIZE_ERROR
   let data = <<
     6:size(24), 2:size(8), 0:size(8), 0:size(1), 1:size(31), 0:size(1),
     3:size(31), 15:size(8), 0,
   >>
   h2_frame.parse(data)
-  |> should.equal(Error(h2_frame.ConnectionError(h2_frame.FrameSizeError)))
+  |> should.equal(
+    Error(h2_frame.StreamError(stream_id: 1, error_code: h2_frame.FrameSizeError)),
+  )
 }
 
 pub fn parse_priority_unknown_flags_ignored_test() {
