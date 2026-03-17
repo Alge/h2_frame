@@ -8,7 +8,7 @@ pub fn parse_goaway_test() {
     8:size(24), 7:size(8), 0:size(8), 0:size(1), 0:size(31), 0:size(1),
     1:size(31), 0x00:size(32),
   >>
-  h2_frame.parse(data)
+  h2_frame.decode_frame(data)
   |> should.equal(
     Ok(
       h2_frame.Goaway(
@@ -26,7 +26,7 @@ pub fn parse_goaway_with_error_test() {
     8:size(24), 7:size(8), 0:size(8), 0:size(1), 0:size(31), 0:size(1),
     5:size(31), 0x01:size(32),
   >>
-  h2_frame.parse(data)
+  h2_frame.decode_frame(data)
   |> should.equal(
     Ok(
       h2_frame.Goaway(
@@ -44,7 +44,7 @@ pub fn parse_goaway_with_debug_data_test() {
     13:size(24), 7:size(8), 0:size(8), 0:size(1), 0:size(31), 0:size(1),
     1:size(31), 0x00:size(32), "hello":utf8,
   >>
-  h2_frame.parse(data)
+  h2_frame.decode_frame(data)
   |> should.equal(
     Ok(
       h2_frame.Goaway(
@@ -62,7 +62,7 @@ pub fn parse_goaway_zero_last_stream_id_test() {
     8:size(24), 7:size(8), 0:size(8), 0:size(1), 0:size(31), 0:size(1),
     0:size(31), 0x00:size(32),
   >>
-  h2_frame.parse(data)
+  h2_frame.decode_frame(data)
   |> should.equal(
     Ok(
       h2_frame.Goaway(
@@ -80,7 +80,7 @@ pub fn parse_goaway_unknown_error_code_test() {
     8:size(24), 7:size(8), 0:size(8), 0:size(1), 0:size(31), 0:size(1),
     1:size(31), 0xFF:size(32),
   >>
-  h2_frame.parse(data)
+  h2_frame.decode_frame(data)
   |> should.equal(
     Ok(
       h2_frame.Goaway(
@@ -98,7 +98,7 @@ pub fn parse_goaway_stream_id_nonzero_test() {
     8:size(24), 7:size(8), 0:size(8), 0:size(1), 1:size(31), 0:size(1),
     1:size(31), 0x00:size(32),
   >>
-  h2_frame.parse(data)
+  h2_frame.decode_frame(data)
   |> should.equal(Error(h2_frame.ConnectionError(h2_frame.ProtocolError)))
 }
 
@@ -108,7 +108,7 @@ pub fn parse_goaway_unknown_flags_ignored_test() {
     8:size(24), 7:size(8), 0xFF:size(8), 0:size(1), 0:size(31), 0:size(1),
     1:size(31), 0x00:size(32),
   >>
-  h2_frame.parse(data)
+  h2_frame.decode_frame(data)
   |> should.equal(
     Ok(
       h2_frame.Goaway(
@@ -127,7 +127,7 @@ pub fn parse_goaway_too_short_length_test() {
     4:size(24), 7:size(8), 0:size(8), 0:size(1), 0:size(31), 0:size(1),
     1:size(31),
   >>
-  h2_frame.parse(data)
+  h2_frame.decode_frame(data)
   |> should.equal(Error(h2_frame.ConnectionError(h2_frame.FrameSizeError)))
 }
 
@@ -138,7 +138,7 @@ pub fn parse_goaway_truncated_payload_test() {
     8:size(24), 7:size(8), 0:size(8), 0:size(1), 0:size(31), 0:size(1),
     1:size(31),
   >>
-  h2_frame.parse(data)
+  h2_frame.decode_frame(data)
   |> should.equal(Error(h2_frame.MalformedFrame))
 }
 
@@ -149,7 +149,7 @@ pub fn parse_goaway_with_trailing_data_test() {
     8:size(24), 7:size(8), 0:size(8), 0:size(1), 0:size(31), 0:size(1),
     1:size(31), 0x00:size(32), 99, 99,
   >>
-  h2_frame.parse(data)
+  h2_frame.decode_frame(data)
   |> should.equal(Error(h2_frame.MalformedFrame))
 }
 
@@ -160,7 +160,7 @@ pub fn parse_goaway_debug_data_with_trailing_test() {
     11:size(24), 7:size(8), 0:size(8), 0:size(1), 0:size(31), 0:size(1),
     1:size(31), 0x02:size(32), "err":utf8, 99, 99,
   >>
-  h2_frame.parse(data)
+  h2_frame.decode_frame(data)
   |> should.equal(Error(h2_frame.MalformedFrame))
 }
 
@@ -233,7 +233,7 @@ pub fn encode_goaway_roundtrip_test() {
       error_code: h2_frame.InternalError,
       debug_data: <<"err":utf8>>,
     )
-  h2_frame.parse(encoded)
+  h2_frame.decode_frame(encoded)
   |> should.equal(
     Ok(
       h2_frame.Goaway(

@@ -8,7 +8,7 @@ pub fn parse_priority_test() {
     5:size(24), 2:size(8), 0:size(8), 0:size(1), 1:size(31), 0:size(1),
     3:size(31), 15:size(8),
   >>
-  h2_frame.parse(data)
+  h2_frame.decode_frame(data)
   |> should.equal(
     Ok(h2_frame.Priority(
       stream_id: 1,
@@ -25,7 +25,7 @@ pub fn parse_priority_exclusive_test() {
     5:size(24), 2:size(8), 0:size(8), 0:size(1), 1:size(31), 1:size(1),
     5:size(31), 255:size(8),
   >>
-  h2_frame.parse(data)
+  h2_frame.decode_frame(data)
   |> should.equal(
     Ok(h2_frame.Priority(
       stream_id: 1,
@@ -42,7 +42,7 @@ pub fn parse_priority_zero_weight_test() {
     5:size(24), 2:size(8), 0:size(8), 0:size(1), 1:size(31), 0:size(1),
     0:size(31), 0:size(8),
   >>
-  h2_frame.parse(data)
+  h2_frame.decode_frame(data)
   |> should.equal(
     Ok(h2_frame.Priority(
       stream_id: 1,
@@ -59,7 +59,7 @@ pub fn parse_priority_stream_id_zero_test() {
     5:size(24), 2:size(8), 0:size(8), 0:size(1), 0:size(31), 0:size(1),
     3:size(31), 15:size(8),
   >>
-  h2_frame.parse(data)
+  h2_frame.decode_frame(data)
   |> should.equal(Error(h2_frame.ConnectionError(h2_frame.ProtocolError)))
 }
 
@@ -68,7 +68,7 @@ pub fn parse_priority_wrong_length_test() {
   let data = <<
     4:size(24), 2:size(8), 0:size(8), 0:size(1), 1:size(31), 0, 0, 0, 0,
   >>
-  h2_frame.parse(data)
+  h2_frame.decode_frame(data)
   |> should.equal(
     Error(h2_frame.StreamError(
       stream_id: 1,
@@ -83,7 +83,7 @@ pub fn parse_priority_too_long_test() {
     6:size(24), 2:size(8), 0:size(8), 0:size(1), 1:size(31), 0:size(1),
     3:size(31), 15:size(8), 0,
   >>
-  h2_frame.parse(data)
+  h2_frame.decode_frame(data)
   |> should.equal(
     Error(h2_frame.StreamError(
       stream_id: 1,
@@ -98,7 +98,7 @@ pub fn parse_priority_unknown_flags_ignored_test() {
     5:size(24), 2:size(8), 0xFF:size(8), 0:size(1), 1:size(31), 0:size(1),
     3:size(31), 15:size(8),
   >>
-  h2_frame.parse(data)
+  h2_frame.decode_frame(data)
   |> should.equal(
     Ok(h2_frame.Priority(
       stream_id: 1,
@@ -116,7 +116,7 @@ pub fn parse_priority_self_dependency_test() {
     5:size(24), 2:size(8), 0:size(8), 0:size(1), 1:size(31), 0:size(1),
     1:size(31), 15:size(8),
   >>
-  h2_frame.parse(data)
+  h2_frame.decode_frame(data)
   |> should.equal(
     Error(h2_frame.StreamError(stream_id: 1, error_code: h2_frame.ProtocolError)),
   )
@@ -127,7 +127,7 @@ pub fn parse_priority_truncated_payload_test() {
   let data = <<
     5:size(24), 2:size(8), 0:size(8), 0:size(1), 1:size(31), 0, 0, 0,
   >>
-  h2_frame.parse(data)
+  h2_frame.decode_frame(data)
   |> should.equal(Error(h2_frame.MalformedFrame))
 }
 
@@ -137,7 +137,7 @@ pub fn parse_priority_with_trailing_data_test() {
     5:size(24), 2:size(8), 0:size(8), 0:size(1), 1:size(31), 0:size(1),
     3:size(31), 15:size(8), 99, 99,
   >>
-  h2_frame.parse(data)
+  h2_frame.decode_frame(data)
   |> should.equal(Error(h2_frame.MalformedFrame))
 }
 
@@ -211,7 +211,7 @@ pub fn encode_priority_roundtrip_test() {
       stream_dependency: 10,
       weight: 42,
     )
-  h2_frame.parse(encoded)
+  h2_frame.decode_frame(encoded)
   |> should.equal(
     Ok(h2_frame.Priority(
       stream_id: 7,

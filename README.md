@@ -27,7 +27,7 @@ let assert Ok(#(frame_data, rest)) =
   h2_frame.extract_frame(buffer, max_frame_size)
 
 // Parse the extracted frame
-let assert Ok(frame) = h2_frame.parse(frame_data)
+let assert Ok(frame) = h2_frame.decode_frame(frame_data)
 ```
 
 ### Encoding

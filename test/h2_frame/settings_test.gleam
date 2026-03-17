@@ -4,7 +4,7 @@ import h2_frame
 pub fn parse_settings_empty_test() {
   // RFC 9113 Section 6.5: SETTINGS frame with no settings (valid)
   let data = <<0:size(24), 4:size(8), 0:size(8), 0:size(1), 0:size(31)>>
-  h2_frame.parse(data)
+  h2_frame.decode_frame(data)
   |> should.equal(Ok(h2_frame.Settings(ack: False, settings: [])))
 }
 
@@ -14,7 +14,7 @@ pub fn parse_settings_single_test() {
     6:size(24), 4:size(8), 0:size(8), 0:size(1), 0:size(31), 0x01:size(16),
     4096:size(32),
   >>
-  h2_frame.parse(data)
+  h2_frame.decode_frame(data)
   |> should.equal(
     Ok(
       h2_frame.Settings(ack: False, settings: [h2_frame.HeaderTableSize(4096)]),
@@ -29,7 +29,7 @@ pub fn parse_settings_multiple_test() {
     12:size(24), 4:size(8), 0:size(8), 0:size(1), 0:size(31), 0x01:size(16),
     4096:size(32), 0x03:size(16), 100:size(32),
   >>
-  h2_frame.parse(data)
+  h2_frame.decode_frame(data)
   |> should.equal(
     Ok(
       h2_frame.Settings(ack: False, settings: [
@@ -48,7 +48,7 @@ pub fn parse_settings_all_known_test() {
     0x04:size(16), 65_535:size(32), 0x05:size(16), 16_384:size(32),
     0x06:size(16), 8192:size(32),
   >>
-  h2_frame.parse(data)
+  h2_frame.decode_frame(data)
   |> should.equal(
     Ok(
       h2_frame.Settings(ack: False, settings: [
@@ -69,7 +69,7 @@ pub fn parse_settings_unknown_setting_test() {
     6:size(24), 4:size(8), 0:size(8), 0:size(1), 0:size(31), 0xFF:size(16),
     42:size(32),
   >>
-  h2_frame.parse(data)
+  h2_frame.decode_frame(data)
   |> should.equal(
     Ok(
       h2_frame.Settings(ack: False, settings: [
@@ -82,7 +82,7 @@ pub fn parse_settings_unknown_setting_test() {
 pub fn parse_settings_ack_test() {
   // RFC 9113 Section 6.5: ACK (0x01) flag with empty payload
   let data = <<0:size(24), 4:size(8), 1:size(8), 0:size(1), 0:size(31)>>
-  h2_frame.parse(data)
+  h2_frame.decode_frame(data)
   |> should.equal(Ok(h2_frame.Settings(ack: True, settings: [])))
 }
 
@@ -92,14 +92,14 @@ pub fn parse_settings_ack_non_empty_test() {
     6:size(24), 4:size(8), 1:size(8), 0:size(1), 0:size(31), 0x01:size(16),
     4096:size(32),
   >>
-  h2_frame.parse(data)
+  h2_frame.decode_frame(data)
   |> should.equal(Error(h2_frame.ConnectionError(h2_frame.FrameSizeError)))
 }
 
 pub fn parse_settings_stream_id_nonzero_test() {
   // RFC 9113 Section 6.5: Stream ID must be 0x00, otherwise PROTOCOL_ERROR
   let data = <<0:size(24), 4:size(8), 0:size(8), 0:size(1), 1:size(31)>>
-  h2_frame.parse(data)
+  h2_frame.decode_frame(data)
   |> should.equal(Error(h2_frame.ConnectionError(h2_frame.ProtocolError)))
 }
 
@@ -108,7 +108,7 @@ pub fn parse_settings_length_not_multiple_of_six_test() {
   let data = <<
     7:size(24), 4:size(8), 0:size(8), 0:size(1), 0:size(31), 0, 0, 0, 0, 0, 0, 0,
   >>
-  h2_frame.parse(data)
+  h2_frame.decode_frame(data)
   |> should.equal(Error(h2_frame.ConnectionError(h2_frame.FrameSizeError)))
 }
 
@@ -116,7 +116,7 @@ pub fn parse_settings_unknown_flags_ignored_test() {
   // RFC 9113 Section 4.1: Unknown flags MUST be ignored
   // 0xFE has all bits set except ACK
   let data = <<0:size(24), 4:size(8), 0xFE:size(8), 0:size(1), 0:size(31)>>
-  h2_frame.parse(data)
+  h2_frame.decode_frame(data)
   |> should.equal(Ok(h2_frame.Settings(ack: False, settings: [])))
 }
 
@@ -125,7 +125,7 @@ pub fn parse_settings_truncated_payload_test() {
   let data = <<
     6:size(24), 4:size(8), 0:size(8), 0:size(1), 0:size(31), 0x01:size(16),
   >>
-  h2_frame.parse(data)
+  h2_frame.decode_frame(data)
   |> should.equal(Error(h2_frame.MalformedFrame))
 }
 
@@ -135,7 +135,7 @@ pub fn parse_settings_with_trailing_data_test() {
     6:size(24), 4:size(8), 0:size(8), 0:size(1), 0:size(31), 0x01:size(16),
     4096:size(32), 99, 99,
   >>
-  h2_frame.parse(data)
+  h2_frame.decode_frame(data)
   |> should.equal(Error(h2_frame.MalformedFrame))
 }
 
@@ -225,7 +225,7 @@ pub fn encode_settings_roundtrip_test() {
       h2_frame.HeaderTableSize(4096),
       h2_frame.MaxConcurrentStreams(100),
     ])
-  h2_frame.parse(encoded)
+  h2_frame.decode_frame(encoded)
   |> should.equal(
     Ok(
       h2_frame.Settings(ack: False, settings: [
@@ -238,6 +238,6 @@ pub fn encode_settings_roundtrip_test() {
 
 pub fn encode_settings_ack_roundtrip_test() {
   let assert Ok(encoded) = h2_frame.encode_settings(ack: True, settings: [])
-  h2_frame.parse(encoded)
+  h2_frame.decode_frame(encoded)
   |> should.equal(Ok(h2_frame.Settings(ack: True, settings: [])))
 }

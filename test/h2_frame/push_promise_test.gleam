@@ -9,7 +9,7 @@ pub fn parse_push_promise_test() {
     7:size(24), 5:size(8), 0:size(8), 0:size(1), 1:size(31), 0:size(1),
     2:size(31), "abc":utf8,
   >>
-  h2_frame.parse(data)
+  h2_frame.decode_frame(data)
   |> should.equal(
     Ok(
       h2_frame.PushPromise(
@@ -28,7 +28,7 @@ pub fn parse_push_promise_end_headers_test() {
     7:size(24), 5:size(8), 4:size(8), 0:size(1), 1:size(31), 0:size(1),
     2:size(31), "abc":utf8,
   >>
-  h2_frame.parse(data)
+  h2_frame.decode_frame(data)
   |> should.equal(
     Ok(
       h2_frame.PushPromise(
@@ -48,7 +48,7 @@ pub fn parse_push_promise_padded_test() {
     9:size(24), 5:size(8), 8:size(8), 0:size(1), 1:size(31), 2:size(8),
     0:size(1), 2:size(31), "ab":utf8, 0, 0,
   >>
-  h2_frame.parse(data)
+  h2_frame.decode_frame(data)
   |> should.equal(
     Ok(
       h2_frame.PushPromise(
@@ -67,7 +67,7 @@ pub fn parse_push_promise_padded_end_headers_test() {
     9:size(24), 5:size(8), 0x0C:size(8), 0:size(1), 1:size(31), 2:size(8),
     0:size(1), 2:size(31), "ab":utf8, 0, 0,
   >>
-  h2_frame.parse(data)
+  h2_frame.decode_frame(data)
   |> should.equal(
     Ok(
       h2_frame.PushPromise(
@@ -86,7 +86,7 @@ pub fn parse_push_promise_stream_id_zero_test() {
     7:size(24), 5:size(8), 0:size(8), 0:size(1), 0:size(31), 0:size(1),
     2:size(31), "abc":utf8,
   >>
-  h2_frame.parse(data)
+  h2_frame.decode_frame(data)
   |> should.equal(Error(h2_frame.ConnectionError(h2_frame.ProtocolError)))
 }
 
@@ -97,7 +97,7 @@ pub fn parse_push_promise_promised_stream_id_zero_test() {
     7:size(24), 5:size(8), 0:size(8), 0:size(1), 1:size(31), 0:size(1),
     0:size(31), "abc":utf8,
   >>
-  h2_frame.parse(data)
+  h2_frame.decode_frame(data)
   |> should.equal(Error(h2_frame.ConnectionError(h2_frame.ProtocolError)))
 }
 
@@ -108,7 +108,7 @@ pub fn parse_push_promise_padding_exceeds_payload_test() {
     6:size(24), 5:size(8), 8:size(8), 0:size(1), 1:size(31), 6:size(8),
     0:size(1), 2:size(31), 0,
   >>
-  h2_frame.parse(data)
+  h2_frame.decode_frame(data)
   |> should.equal(Error(h2_frame.ConnectionError(h2_frame.ProtocolError)))
 }
 
@@ -118,7 +118,7 @@ pub fn parse_push_promise_empty_fragment_test() {
     4:size(24), 5:size(8), 0:size(8), 0:size(1), 1:size(31), 0:size(1),
     2:size(31),
   >>
-  h2_frame.parse(data)
+  h2_frame.decode_frame(data)
   |> should.equal(
     Ok(
       h2_frame.PushPromise(
@@ -138,7 +138,7 @@ pub fn parse_push_promise_unknown_flags_ignored_test() {
     7:size(24), 5:size(8), 0xF3:size(8), 0:size(1), 1:size(31), 0:size(1),
     2:size(31), "abc":utf8,
   >>
-  h2_frame.parse(data)
+  h2_frame.decode_frame(data)
   |> should.equal(
     Ok(
       h2_frame.PushPromise(
@@ -154,14 +154,14 @@ pub fn parse_push_promise_unknown_flags_ignored_test() {
 pub fn parse_push_promise_truncated_payload_test() {
   // RFC 9113 Section 6.6: Incomplete payload, parse expects exactly one frame's worth of bytes
   let data = <<7:size(24), 5:size(8), 0:size(8), 0:size(1), 1:size(31), 0, 0>>
-  h2_frame.parse(data)
+  h2_frame.decode_frame(data)
   |> should.equal(Error(h2_frame.MalformedFrame))
 }
 
 pub fn parse_push_promise_padded_empty_payload_test() {
   // RFC 9113 Section 6.6: PADDED flag set but no payload bytes, parse expects exactly one frame's worth of bytes
   let data = <<7:size(24), 5:size(8), 8:size(8), 0:size(1), 1:size(31)>>
-  h2_frame.parse(data)
+  h2_frame.decode_frame(data)
   |> should.equal(Error(h2_frame.MalformedFrame))
 }
 
@@ -171,7 +171,7 @@ pub fn parse_push_promise_with_trailing_data_test() {
     7:size(24), 5:size(8), 0:size(8), 0:size(1), 1:size(31), 0:size(1),
     2:size(31), "abc":utf8, 99, 99,
   >>
-  h2_frame.parse(data)
+  h2_frame.decode_frame(data)
   |> should.equal(Error(h2_frame.MalformedFrame))
 }
 
@@ -181,7 +181,7 @@ pub fn parse_push_promise_padded_zero_padding_test() {
     8:size(24), 5:size(8), 8:size(8), 0:size(1), 1:size(31), 0:size(8),
     0:size(1), 2:size(31), "abc":utf8,
   >>
-  h2_frame.parse(data)
+  h2_frame.decode_frame(data)
   |> should.equal(
     Ok(
       h2_frame.PushPromise(
@@ -334,7 +334,7 @@ pub fn encode_push_promise_roundtrip_test() {
       field_block_fragment: <<"test":utf8>>,
       padding: None,
     )
-  h2_frame.parse(encoded)
+  h2_frame.decode_frame(encoded)
   |> should.equal(
     Ok(
       h2_frame.PushPromise(
@@ -356,7 +356,7 @@ pub fn encode_push_promise_padded_roundtrip_test() {
       field_block_fragment: <<"hpack":utf8>>,
       padding: Some(3),
     )
-  h2_frame.parse(encoded)
+  h2_frame.decode_frame(encoded)
   |> should.equal(
     Ok(
       h2_frame.PushPromise(

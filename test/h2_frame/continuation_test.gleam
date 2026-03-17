@@ -6,7 +6,7 @@ pub fn parse_continuation_test() {
   let data = <<
     5:size(24), 9:size(8), 0:size(8), 0:size(1), 1:size(31), "hello":utf8,
   >>
-  h2_frame.parse(data)
+  h2_frame.decode_frame(data)
   |> should.equal(
     Ok(
       h2_frame.Continuation(
@@ -25,7 +25,7 @@ pub fn parse_continuation_end_headers_test() {
   let data = <<
     3:size(24), 9:size(8), 4:size(8), 0:size(1), 1:size(31), "abc":utf8,
   >>
-  h2_frame.parse(data)
+  h2_frame.decode_frame(data)
   |> should.equal(
     Ok(
       h2_frame.Continuation(
@@ -42,7 +42,7 @@ pub fn parse_continuation_end_headers_test() {
 pub fn parse_continuation_empty_fragment_test() {
   // RFC 9113 Section 6.10: Empty fragment is valid
   let data = <<0:size(24), 9:size(8), 0:size(8), 0:size(1), 1:size(31)>>
-  h2_frame.parse(data)
+  h2_frame.decode_frame(data)
   |> should.equal(
     Ok(
       h2_frame.Continuation(
@@ -59,7 +59,7 @@ pub fn parse_continuation_stream_id_zero_test() {
   let data = <<
     3:size(24), 9:size(8), 0:size(8), 0:size(1), 0:size(31), "abc":utf8,
   >>
-  h2_frame.parse(data)
+  h2_frame.decode_frame(data)
   |> should.equal(Error(h2_frame.ConnectionError(h2_frame.ProtocolError)))
 }
 
@@ -69,7 +69,7 @@ pub fn parse_continuation_unknown_flags_ignored_test() {
   let data = <<
     3:size(24), 9:size(8), 0xFB:size(8), 0:size(1), 1:size(31), "abc":utf8,
   >>
-  h2_frame.parse(data)
+  h2_frame.decode_frame(data)
   |> should.equal(
     Ok(
       h2_frame.Continuation(
@@ -88,7 +88,7 @@ pub fn parse_continuation_truncated_payload_test() {
   let data = <<
     10:size(24), 9:size(8), 0:size(8), 0:size(1), 1:size(31), "short":utf8,
   >>
-  h2_frame.parse(data)
+  h2_frame.decode_frame(data)
   |> should.equal(Error(h2_frame.MalformedFrame))
 }
 
@@ -97,7 +97,7 @@ pub fn parse_continuation_with_trailing_data_test() {
   let data = <<
     3:size(24), 9:size(8), 0:size(8), 0:size(1), 1:size(31), "abc":utf8, 99, 99,
   >>
-  h2_frame.parse(data)
+  h2_frame.decode_frame(data)
   |> should.equal(Error(h2_frame.MalformedFrame))
 }
 
@@ -152,7 +152,7 @@ pub fn encode_continuation_roundtrip_test() {
       end_headers: True,
       field_block_fragment: <<"hpack":utf8>>,
     )
-  h2_frame.parse(encoded)
+  h2_frame.decode_frame(encoded)
   |> should.equal(
     Ok(
       h2_frame.Continuation(

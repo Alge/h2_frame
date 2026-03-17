@@ -174,7 +174,7 @@ fn encode_stream_priority(stream_priority: StreamPriority) -> BitArray {
   >>
 }
 
-fn parse_data(data: BitArray) -> Result(Frame, FrameError) {
+fn decode_data(data: BitArray) -> Result(Frame, FrameError) {
   case data {
     <<
       length:size(24),
@@ -215,7 +215,7 @@ fn parse_data(data: BitArray) -> Result(Frame, FrameError) {
   }
 }
 
-fn parse_headers(data: BitArray) -> Result(Frame, FrameError) {
+fn decode_headers(data: BitArray) -> Result(Frame, FrameError) {
   case data {
     <<
       length:size(24),
@@ -277,7 +277,7 @@ fn parse_headers(data: BitArray) -> Result(Frame, FrameError) {
   }
 }
 
-fn parse_priority(data: BitArray) -> Result(Frame, FrameError) {
+fn decode_priority(data: BitArray) -> Result(Frame, FrameError) {
   case data {
     <<
       length:size(24),
@@ -318,7 +318,7 @@ fn parse_priority(data: BitArray) -> Result(Frame, FrameError) {
   }
 }
 
-fn parse_rst_stream(data: BitArray) -> Result(Frame, FrameError) {
+fn decode_rst_stream(data: BitArray) -> Result(Frame, FrameError) {
   case data {
     <<
       length:size(24),
@@ -349,7 +349,7 @@ fn parse_rst_stream(data: BitArray) -> Result(Frame, FrameError) {
   }
 }
 
-fn parse_settings(data: BitArray) -> Result(Frame, FrameError) {
+fn decode_settings(data: BitArray) -> Result(Frame, FrameError) {
   case data {
     <<
       length:size(24),
@@ -377,7 +377,7 @@ fn parse_settings(data: BitArray) -> Result(Frame, FrameError) {
   }
 }
 
-fn parse_push_promise(data: BitArray) -> Result(Frame, FrameError) {
+fn decode_push_promise(data: BitArray) -> Result(Frame, FrameError) {
   case data {
     <<
       length:size(24),
@@ -426,7 +426,7 @@ fn parse_push_promise(data: BitArray) -> Result(Frame, FrameError) {
   }
 }
 
-fn parse_ping(data: BitArray) -> Result(Frame, FrameError) {
+fn decode_ping(data: BitArray) -> Result(Frame, FrameError) {
   case data {
     <<
       length:size(24),
@@ -448,7 +448,7 @@ fn parse_ping(data: BitArray) -> Result(Frame, FrameError) {
   }
 }
 
-fn parse_go_away(data: BitArray) -> Result(Frame, FrameError) {
+fn decode_go_away(data: BitArray) -> Result(Frame, FrameError) {
   case data {
     <<
       length:size(24),
@@ -482,7 +482,7 @@ fn parse_go_away(data: BitArray) -> Result(Frame, FrameError) {
   }
 }
 
-fn parse_window_update(data: BitArray) -> Result(Frame, FrameError) {
+fn decode_window_update(data: BitArray) -> Result(Frame, FrameError) {
   case data {
     <<
       length:size(24),
@@ -517,7 +517,7 @@ fn parse_window_update(data: BitArray) -> Result(Frame, FrameError) {
   }
 }
 
-fn parse_continuation(data: BitArray) -> Result(Frame, FrameError) {
+fn decode_continuation(data: BitArray) -> Result(Frame, FrameError) {
   case data {
     <<
       length:size(24),
@@ -540,7 +540,7 @@ fn parse_continuation(data: BitArray) -> Result(Frame, FrameError) {
   }
 }
 
-fn parse_unknown(data: BitArray) -> Result(Frame, FrameError) {
+fn decode_unknown(data: BitArray) -> Result(Frame, FrameError) {
   case data {
     <<
       length:size(24),
@@ -587,24 +587,24 @@ pub fn extract_frame(
   }
 }
 
-/// Parses a complete HTTP/2 frame from binary data.
+/// Decodes a complete HTTP/2 frame from binary data.
 /// Expects exactly one frame's worth of bytes (as returned by extract_frame).
 /// Returns MalformedFrame if the input is too short or has trailing bytes.
-pub fn parse(data: BitArray) -> Result(Frame, FrameError) {
+pub fn decode_frame(data: BitArray) -> Result(Frame, FrameError) {
   case data {
     <<_length:size(24), frame_type:size(8), _:bits>> -> {
       case frame_type {
-        0x00 -> parse_data(data)
-        0x01 -> parse_headers(data)
-        0x02 -> parse_priority(data)
-        0x03 -> parse_rst_stream(data)
-        0x04 -> parse_settings(data)
-        0x05 -> parse_push_promise(data)
-        0x06 -> parse_ping(data)
-        0x07 -> parse_go_away(data)
-        0x08 -> parse_window_update(data)
-        0x09 -> parse_continuation(data)
-        _ -> parse_unknown(data)
+        0x00 -> decode_data(data)
+        0x01 -> decode_headers(data)
+        0x02 -> decode_priority(data)
+        0x03 -> decode_rst_stream(data)
+        0x04 -> decode_settings(data)
+        0x05 -> decode_push_promise(data)
+        0x06 -> decode_ping(data)
+        0x07 -> decode_go_away(data)
+        0x08 -> decode_window_update(data)
+        0x09 -> decode_continuation(data)
+        _ -> decode_unknown(data)
       }
     }
     _ -> Error(MalformedFrame)
