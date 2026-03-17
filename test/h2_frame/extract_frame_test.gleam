@@ -37,13 +37,13 @@ pub fn extract_frame_incomplete_header_test() {
   // Less than 9 bytes — not enough for the frame header
   let data = <<5:size(24), 0:size(8), 0:size(8)>>
   h2_frame.extract_frame(data, default_max_frame_size)
-  |> should.equal(Error(h2_frame.Incomplete))
+  |> should.equal(Error(h2_frame.NeedMoreData))
 }
 
 pub fn extract_frame_empty_input_test() {
   // Empty input — incomplete
   h2_frame.extract_frame(<<>>, default_max_frame_size)
-  |> should.equal(Error(h2_frame.Incomplete))
+  |> should.equal(Error(h2_frame.NeedMoreData))
 }
 
 pub fn extract_frame_incomplete_payload_test() {
@@ -52,14 +52,14 @@ pub fn extract_frame_incomplete_payload_test() {
     10:size(24), 0:size(8), 0:size(8), 0:size(1), 1:size(31), "short":utf8,
   >>
   h2_frame.extract_frame(data, default_max_frame_size)
-  |> should.equal(Error(h2_frame.Incomplete))
+  |> should.equal(Error(h2_frame.NeedMoreData))
 }
 
 pub fn extract_frame_header_only_no_payload_test() {
   // Header says 5 bytes of payload but none present
   let data = <<5:size(24), 0:size(8), 0:size(8), 0:size(1), 1:size(31)>>
   h2_frame.extract_frame(data, default_max_frame_size)
-  |> should.equal(Error(h2_frame.Incomplete))
+  |> should.equal(Error(h2_frame.NeedMoreData))
 }
 
 pub fn extract_frame_exceeds_max_frame_size_test() {

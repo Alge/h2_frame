@@ -65,7 +65,7 @@ pub fn encode_error_code(error_code: ErrorCode) -> Int {
 pub type FrameError {
   ConnectionError(error_code: ErrorCode)
   StreamError(stream_id: Int, error_code: ErrorCode)
-  Incomplete
+  NeedMoreData
   InvalidPadding
   MalformedFrame
 }
@@ -580,10 +580,10 @@ pub fn extract_frame(
           Ok(#(<<length:size(24), data:bits>>, rest))
         }
 
-        _ -> Error(Incomplete)
+        _ -> Error(NeedMoreData)
       }
     }
-    _ -> Error(Incomplete)
+    _ -> Error(NeedMoreData)
   }
 }
 
