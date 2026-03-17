@@ -67,6 +67,7 @@ pub type FrameError {
   StreamError(stream_id: Int, error_code: ErrorCode)
   Incomplete
   InvalidPadding
+  MalformedFrame
 }
 
 pub type Setting {
@@ -100,7 +101,7 @@ fn parse_settings_list(
       parse_settings_list(rest, [setting, ..settings])
     }
 
-    _ -> Error(Incomplete)
+    _ -> Error(MalformedFrame)
   }
 }
 
@@ -173,7 +174,7 @@ fn encode_stream_priority(stream_priority: StreamPriority) -> BitArray {
   >>
 }
 
-fn parse_data(data: BitArray) -> Result(#(Frame, BitArray), FrameError) {
+fn parse_data(data: BitArray) -> Result(Frame, FrameError) {
   case data {
     <<
       length:size(24),
@@ -185,7 +186,7 @@ fn parse_data(data: BitArray) -> Result(#(Frame, BitArray), FrameError) {
       _reserved:size(1),
       stream_id:size(31),
       pad_length:size(8 * padded),
-      payload:bits,
+      payload:bytes-size(length - 1 * padded),
     >> -> {
       // Make sure the pad length is not greater than the reported length of the payload
       use <- bool.guard(
@@ -200,25 +201,21 @@ fn parse_data(data: BitArray) -> Result(#(Frame, BitArray), FrameError) {
         <<
           data:bytes-size(length - pad_length - 1 * padded),
           _padding:bytes-size(pad_length),
-          rest:bits,
         >> -> {
-          Ok(#(
-            Data(
-              stream_id: stream_id,
-              end_stream: end_stream_bit == 1,
-              data: data,
-            ),
-            rest,
+          Ok(Data(
+            stream_id: stream_id,
+            end_stream: end_stream_bit == 1,
+            data: data,
           ))
         }
-        _ -> Error(Incomplete)
+        _ -> Error(MalformedFrame)
       }
     }
-    _ -> Error(Incomplete)
+    _ -> Error(MalformedFrame)
   }
 }
 
-fn parse_headers(data: BitArray) -> Result(#(Frame, BitArray), FrameError) {
+fn parse_headers(data: BitArray) -> Result(Frame, FrameError) {
   case data {
     <<
       length:size(24),
@@ -238,7 +235,7 @@ fn parse_headers(data: BitArray) -> Result(#(Frame, BitArray), FrameError) {
       stream_dependency:size(31 * priority),
       weight:size(8 * priority),
       // End of deprecated priority part
-      payload:bits,
+      payload:bytes-size(length - 1 * padded - 5 * priority),
     >> -> {
       // Make sure the pad length is not greater than the reported length of the payload
       use <- bool.guard(
@@ -264,27 +261,23 @@ fn parse_headers(data: BitArray) -> Result(#(Frame, BitArray), FrameError) {
         <<
           data:bytes-size(length - pad_length - 1 * padded - 5 * priority),
           _padding:bytes-size(pad_length),
-          rest:bits,
         >> -> {
-          Ok(#(
-            Headers(
-              stream_id: stream_id,
-              end_stream: end_stream_bit == 1,
-              end_headers: end_headers_bit == 1,
-              priority: stream_priority,
-              field_block_fragment: data,
-            ),
-            rest,
+          Ok(Headers(
+            stream_id: stream_id,
+            end_stream: end_stream_bit == 1,
+            end_headers: end_headers_bit == 1,
+            priority: stream_priority,
+            field_block_fragment: data,
           ))
         }
-        _ -> Error(Incomplete)
+        _ -> Error(MalformedFrame)
       }
     }
-    _ -> Error(Incomplete)
+    _ -> Error(MalformedFrame)
   }
 }
 
-fn parse_priority(data: BitArray) -> Result(#(Frame, BitArray), FrameError) {
+fn parse_priority(data: BitArray) -> Result(Frame, FrameError) {
   case data {
     <<
       length:size(24),
@@ -293,7 +286,6 @@ fn parse_priority(data: BitArray) -> Result(#(Frame, BitArray), FrameError) {
       _reserved:size(1),
       stream_id:size(31),
       payload:bytes-size(length),
-      rest:bits,
     >> -> {
       // Parsing is done in two steps to be able to catch invalid lengths
       use <- bool.guard(
@@ -306,25 +298,22 @@ fn parse_priority(data: BitArray) -> Result(#(Frame, BitArray), FrameError) {
 
       case payload {
         <<exclusive:size(1), stream_dependency:size(31), weight:size(8)>> -> {
-          Ok(#(
-            Priority(
-              stream_id: stream_id,
-              exclusive: exclusive == 1,
-              stream_dependency: stream_dependency,
-              weight: weight,
-            ),
-            rest,
+          Ok(Priority(
+            stream_id: stream_id,
+            exclusive: exclusive == 1,
+            stream_dependency: stream_dependency,
+            weight: weight,
           ))
         }
 
-        _ -> Error(Incomplete)
+        _ -> Error(MalformedFrame)
       }
     }
-    _ -> Error(Incomplete)
+    _ -> Error(MalformedFrame)
   }
 }
 
-fn parse_rst_stream(data: BitArray) -> Result(#(Frame, BitArray), FrameError) {
+fn parse_rst_stream(data: BitArray) -> Result(Frame, FrameError) {
   case data {
     <<
       length:size(24),
@@ -333,7 +322,6 @@ fn parse_rst_stream(data: BitArray) -> Result(#(Frame, BitArray), FrameError) {
       _reserved:size(1),
       stream_id:size(31),
       payload:bytes-size(length),
-      rest:bits,
     >> -> {
       // Parsing is done in two steps to be able to catch invalid lengths
       use <- bool.guard(length != 4, Error(ConnectionError(FrameSizeError)))
@@ -343,23 +331,20 @@ fn parse_rst_stream(data: BitArray) -> Result(#(Frame, BitArray), FrameError) {
 
       case payload {
         <<error_code:size(32)>> -> {
-          Ok(#(
-            RstStream(
-              stream_id: stream_id,
-              error_code: parse_error_code(error_code),
-            ),
-            rest,
+          Ok(RstStream(
+            stream_id: stream_id,
+            error_code: parse_error_code(error_code),
           ))
         }
 
-        _ -> Error(Incomplete)
+        _ -> Error(MalformedFrame)
       }
     }
-    _ -> Error(Incomplete)
+    _ -> Error(MalformedFrame)
   }
 }
 
-fn parse_settings(data: BitArray) -> Result(#(Frame, BitArray), FrameError) {
+fn parse_settings(data: BitArray) -> Result(Frame, FrameError) {
   case data {
     <<
       length:size(24),
@@ -369,7 +354,6 @@ fn parse_settings(data: BitArray) -> Result(#(Frame, BitArray), FrameError) {
       _reserved:size(1),
       stream_id:size(31),
       payload:bytes-size(length),
-      rest:bits,
     >> -> {
       use <- bool.guard(stream_id != 0, Error(ConnectionError(ProtocolError)))
 
@@ -381,14 +365,14 @@ fn parse_settings(data: BitArray) -> Result(#(Frame, BitArray), FrameError) {
       use <- bool.guard(length % 6 != 0, Error(ConnectionError(FrameSizeError)))
 
       use settings <- result.try(parse_settings_list(payload, []))
-      Ok(#(Settings(ack: ack == 1, settings: settings), rest))
+      Ok(Settings(ack: ack == 1, settings: settings))
     }
 
-    _ -> Error(Incomplete)
+    _ -> Error(MalformedFrame)
   }
 }
 
-fn parse_push_promise(data: BitArray) -> Result(#(Frame, BitArray), FrameError) {
+fn parse_push_promise(data: BitArray) -> Result(Frame, FrameError) {
   case data {
     <<
       length:size(24),
@@ -400,7 +384,7 @@ fn parse_push_promise(data: BitArray) -> Result(#(Frame, BitArray), FrameError) 
       _reserved:size(1),
       stream_id:size(31),
       pad_length:size(8 * padded),
-      payload:bits,
+      payload:bytes-size(length - 1 * padded),
     >> -> {
       // Make sure the pad length is not greater than the reported length of the payload
       use <- bool.guard(
@@ -417,26 +401,22 @@ fn parse_push_promise(data: BitArray) -> Result(#(Frame, BitArray), FrameError) 
           promised_stream_id:size(31),
           data:bytes-size(length - pad_length - 1 * padded - 4),
           _padding:bytes-size(pad_length),
-          rest:bits,
         >> -> {
-          Ok(#(
-            PushPromise(
-              stream_id: stream_id,
-              end_headers: end_headers == 1,
-              promised_stream_id: promised_stream_id,
-              field_block_fragment: data,
-            ),
-            rest,
+          Ok(PushPromise(
+            stream_id: stream_id,
+            end_headers: end_headers == 1,
+            promised_stream_id: promised_stream_id,
+            field_block_fragment: data,
           ))
         }
-        _ -> Error(Incomplete)
+        _ -> Error(MalformedFrame)
       }
     }
-    _ -> Error(Incomplete)
+    _ -> Error(MalformedFrame)
   }
 }
 
-fn parse_ping(data: BitArray) -> Result(#(Frame, BitArray), FrameError) {
+fn parse_ping(data: BitArray) -> Result(Frame, FrameError) {
   case data {
     <<
       length:size(24),
@@ -446,20 +426,19 @@ fn parse_ping(data: BitArray) -> Result(#(Frame, BitArray), FrameError) {
       _reserved:size(1),
       stream_id:size(31),
       data:bytes-size(length),
-      rest:bits,
     >> -> {
       use <- bool.guard(length != 8, Error(ConnectionError(FrameSizeError)))
 
       use <- bool.guard(stream_id != 0, Error(ConnectionError(ProtocolError)))
 
-      Ok(#(Ping(ack: ack == 1, data: data), rest))
+      Ok(Ping(ack: ack == 1, data: data))
     }
 
-    _ -> Error(Incomplete)
+    _ -> Error(MalformedFrame)
   }
 }
 
-fn parse_go_away(data: BitArray) -> Result(#(Frame, BitArray), FrameError) {
+fn parse_go_away(data: BitArray) -> Result(Frame, FrameError) {
   case data {
     <<
       length:size(24),
@@ -468,10 +447,8 @@ fn parse_go_away(data: BitArray) -> Result(#(Frame, BitArray), FrameError) {
       _reserved:size(1),
       stream_id:size(31),
       payload:bytes-size(length),
-      rest:bits,
     >> -> {
       use <- bool.guard(stream_id != 0, Error(ConnectionError(ProtocolError)))
-
       use <- bool.guard(length < 8, Error(ConnectionError(FrameSizeError)))
 
       case payload {
@@ -479,27 +456,23 @@ fn parse_go_away(data: BitArray) -> Result(#(Frame, BitArray), FrameError) {
           _reserved:size(1),
           last_stream_id:size(31),
           error_code:size(32),
-          debug_data:bytes-size(length - 8),
+          debug_data:bytes,
         >> -> {
-          Ok(#(
-            Goaway(
-              last_stream_id: last_stream_id,
-              error_code: parse_error_code(error_code),
-              debug_data: debug_data,
-            ),
-            rest,
+          Ok(Goaway(
+            last_stream_id: last_stream_id,
+            error_code: parse_error_code(error_code),
+            debug_data: debug_data,
           ))
         }
-
-        _ -> Error(Incomplete)
+        _ -> Error(MalformedFrame)
       }
     }
 
-    _ -> Error(Incomplete)
+    _ -> Error(MalformedFrame)
   }
 }
 
-fn parse_window_update(data: BitArray) -> Result(#(Frame, BitArray), FrameError) {
+fn parse_window_update(data: BitArray) -> Result(Frame, FrameError) {
   case data {
     <<
       length:size(24),
@@ -508,7 +481,6 @@ fn parse_window_update(data: BitArray) -> Result(#(Frame, BitArray), FrameError)
       _reserved:size(1),
       stream_id:size(31),
       payload:bytes-size(length),
-      rest:bits,
     >> -> {
       use <- bool.guard(length != 4, Error(ConnectionError(FrameSizeError)))
 
@@ -522,23 +494,20 @@ fn parse_window_update(data: BitArray) -> Result(#(Frame, BitArray), FrameError)
             window_size_increment == 0 && stream_id != 0,
             Error(StreamError(stream_id: stream_id, error_code: ProtocolError)),
           )
-          Ok(#(
-            WindowUpdate(
-              stream_id: stream_id,
-              window_size_increment: window_size_increment,
-            ),
-            rest,
+          Ok(WindowUpdate(
+            stream_id: stream_id,
+            window_size_increment: window_size_increment,
           ))
         }
 
-        _ -> Error(Incomplete)
+        _ -> Error(MalformedFrame)
       }
     }
-    _ -> Error(Incomplete)
+    _ -> Error(MalformedFrame)
   }
 }
 
-fn parse_continuation(data: BitArray) -> Result(#(Frame, BitArray), FrameError) {
+fn parse_continuation(data: BitArray) -> Result(Frame, FrameError) {
   case data {
     <<
       length:size(24),
@@ -549,23 +518,19 @@ fn parse_continuation(data: BitArray) -> Result(#(Frame, BitArray), FrameError) 
       _reserved:size(1),
       stream_id:size(31),
       field_block_fragment:bytes-size(length),
-      rest:bits,
     >> -> {
       use <- bool.guard(stream_id == 0, Error(ConnectionError(ProtocolError)))
-      Ok(#(
-        Continuation(
-          stream_id: stream_id,
-          end_headers: end_headers == 1,
-          field_block_fragment: field_block_fragment,
-        ),
-        rest,
+      Ok(Continuation(
+        stream_id: stream_id,
+        end_headers: end_headers == 1,
+        field_block_fragment: field_block_fragment,
       ))
     }
-    _ -> Error(Incomplete)
+    _ -> Error(MalformedFrame)
   }
 }
 
-fn parse_unknown(data: BitArray) -> Result(#(Frame, BitArray), FrameError) {
+fn parse_unknown(data: BitArray) -> Result(Frame, FrameError) {
   case data {
     <<
       length:size(24),
@@ -574,26 +539,48 @@ fn parse_unknown(data: BitArray) -> Result(#(Frame, BitArray), FrameError) {
       _reserved:size(1),
       stream_id:size(31),
       data:bytes-size(length),
-      rest:bits,
     >> -> {
-      Ok(#(
-        Unknown(
-          stream_id: stream_id,
-          frame_type: frame_type,
-          flags: flags,
-          data: data,
-        ),
-        rest,
+      Ok(Unknown(
+        stream_id: stream_id,
+        frame_type: frame_type,
+        flags: flags,
+        data: data,
       ))
+    }
+    _ -> Error(MalformedFrame)
+  }
+}
+
+/// Reads the 9-byte frame header, validates the declared payload length
+/// against max_frame_size, and slices out the complete frame.
+/// Returns the raw frame bytes (header + payload) and the remaining bytes.
+pub fn extract_frame(
+  data: BitArray,
+  max_frame_size: Int,
+) -> Result(#(BitArray, BitArray), FrameError) {
+  case data {
+    <<length:size(24), rest:bits>> -> {
+      use <- bool.guard(
+        length > max_frame_size,
+        Error(ConnectionError(FrameSizeError)),
+      )
+
+      case rest {
+        <<data:bytes-size(6 + length), rest:bits>> -> {
+          Ok(#(<<length:size(24), data:bits>>, rest))
+        }
+
+        _ -> Error(Incomplete)
+      }
     }
     _ -> Error(Incomplete)
   }
 }
 
 /// Parses a complete HTTP/2 frame from binary data.
-/// Returns the frame and any remaining bytes
-/// that follow the frame.
-pub fn parse(data: BitArray) -> Result(#(Frame, BitArray), FrameError) {
+/// Expects exactly one frame's worth of bytes (as returned by extract_frame).
+/// Returns MalformedFrame if the input is too short or has trailing bytes.
+pub fn parse(data: BitArray) -> Result(Frame, FrameError) {
   case data {
     <<_length:size(24), frame_type:size(8), _:bits>> -> {
       case frame_type {
@@ -610,7 +597,7 @@ pub fn parse(data: BitArray) -> Result(#(Frame, BitArray), FrameError) {
         _ -> parse_unknown(data)
       }
     }
-    _ -> Error(Incomplete)
+    _ -> Error(MalformedFrame)
   }
 }
 

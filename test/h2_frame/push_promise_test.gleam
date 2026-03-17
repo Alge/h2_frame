@@ -12,14 +12,11 @@ pub fn parse_push_promise_test() {
   h2_frame.parse(data)
   |> should.equal(
     Ok(
-      #(
-        h2_frame.PushPromise(
-          stream_id: 1,
-          end_headers: False,
-          promised_stream_id: 2,
-          field_block_fragment: <<"abc":utf8>>,
-        ),
-        <<>>,
+      h2_frame.PushPromise(
+        stream_id: 1,
+        end_headers: False,
+        promised_stream_id: 2,
+        field_block_fragment: <<"abc":utf8>>,
       ),
     ),
   )
@@ -34,14 +31,11 @@ pub fn parse_push_promise_end_headers_test() {
   h2_frame.parse(data)
   |> should.equal(
     Ok(
-      #(
-        h2_frame.PushPromise(
-          stream_id: 1,
-          end_headers: True,
-          promised_stream_id: 2,
-          field_block_fragment: <<"abc":utf8>>,
-        ),
-        <<>>,
+      h2_frame.PushPromise(
+        stream_id: 1,
+        end_headers: True,
+        promised_stream_id: 2,
+        field_block_fragment: <<"abc":utf8>>,
       ),
     ),
   )
@@ -57,14 +51,11 @@ pub fn parse_push_promise_padded_test() {
   h2_frame.parse(data)
   |> should.equal(
     Ok(
-      #(
-        h2_frame.PushPromise(
-          stream_id: 1,
-          end_headers: False,
-          promised_stream_id: 2,
-          field_block_fragment: <<"ab":utf8>>,
-        ),
-        <<>>,
+      h2_frame.PushPromise(
+        stream_id: 1,
+        end_headers: False,
+        promised_stream_id: 2,
+        field_block_fragment: <<"ab":utf8>>,
       ),
     ),
   )
@@ -79,14 +70,11 @@ pub fn parse_push_promise_padded_end_headers_test() {
   h2_frame.parse(data)
   |> should.equal(
     Ok(
-      #(
-        h2_frame.PushPromise(
-          stream_id: 1,
-          end_headers: True,
-          promised_stream_id: 2,
-          field_block_fragment: <<"ab":utf8>>,
-        ),
-        <<>>,
+      h2_frame.PushPromise(
+        stream_id: 1,
+        end_headers: True,
+        promised_stream_id: 2,
+        field_block_fragment: <<"ab":utf8>>,
       ),
     ),
   )
@@ -122,14 +110,11 @@ pub fn parse_push_promise_empty_fragment_test() {
   h2_frame.parse(data)
   |> should.equal(
     Ok(
-      #(
-        h2_frame.PushPromise(
-          stream_id: 1,
-          end_headers: False,
-          promised_stream_id: 2,
-          field_block_fragment: <<>>,
-        ),
-        <<>>,
+      h2_frame.PushPromise(
+        stream_id: 1,
+        end_headers: False,
+        promised_stream_id: 2,
+        field_block_fragment: <<>>,
       ),
     ),
   )
@@ -145,53 +130,38 @@ pub fn parse_push_promise_unknown_flags_ignored_test() {
   h2_frame.parse(data)
   |> should.equal(
     Ok(
-      #(
-        h2_frame.PushPromise(
-          stream_id: 1,
-          end_headers: False,
-          promised_stream_id: 2,
-          field_block_fragment: <<"abc":utf8>>,
-        ),
-        <<>>,
+      h2_frame.PushPromise(
+        stream_id: 1,
+        end_headers: False,
+        promised_stream_id: 2,
+        field_block_fragment: <<"abc":utf8>>,
       ),
     ),
   )
 }
 
 pub fn parse_push_promise_truncated_payload_test() {
-  // RFC 9113 Section 6.6: Incomplete payload (can't even read promised stream ID)
+  // RFC 9113 Section 6.6: Incomplete payload, parse expects exactly one frame's worth of bytes
   let data = <<7:size(24), 5:size(8), 0:size(8), 0:size(1), 1:size(31), 0, 0>>
   h2_frame.parse(data)
-  |> should.equal(Error(h2_frame.Incomplete))
+  |> should.equal(Error(h2_frame.MalformedFrame))
 }
 
 pub fn parse_push_promise_padded_empty_payload_test() {
-  // RFC 9113 Section 6.6: PADDED flag set but no payload bytes at all
+  // RFC 9113 Section 6.6: PADDED flag set but no payload bytes, parse expects exactly one frame's worth of bytes
   let data = <<7:size(24), 5:size(8), 8:size(8), 0:size(1), 1:size(31)>>
   h2_frame.parse(data)
-  |> should.equal(Error(h2_frame.Incomplete))
+  |> should.equal(Error(h2_frame.MalformedFrame))
 }
 
 pub fn parse_push_promise_with_trailing_data_test() {
-  // RFC 9113 Section 6.6: Trailing data from next frame returned
+  // RFC 9113 Section 6.6: Trailing data no longer accepted, parse expects exactly one frame's worth of bytes
   let data = <<
     7:size(24), 5:size(8), 0:size(8), 0:size(1), 1:size(31), 0:size(1),
     2:size(31), "abc":utf8, 99, 99,
   >>
   h2_frame.parse(data)
-  |> should.equal(
-    Ok(
-      #(
-        h2_frame.PushPromise(
-          stream_id: 1,
-          end_headers: False,
-          promised_stream_id: 2,
-          field_block_fragment: <<"abc":utf8>>,
-        ),
-        <<99, 99>>,
-      ),
-    ),
-  )
+  |> should.equal(Error(h2_frame.MalformedFrame))
 }
 
 pub fn parse_push_promise_padded_zero_padding_test() {
@@ -203,14 +173,11 @@ pub fn parse_push_promise_padded_zero_padding_test() {
   h2_frame.parse(data)
   |> should.equal(
     Ok(
-      #(
-        h2_frame.PushPromise(
-          stream_id: 1,
-          end_headers: False,
-          promised_stream_id: 2,
-          field_block_fragment: <<"abc":utf8>>,
-        ),
-        <<>>,
+      h2_frame.PushPromise(
+        stream_id: 1,
+        end_headers: False,
+        promised_stream_id: 2,
+        field_block_fragment: <<"abc":utf8>>,
       ),
     ),
   )
@@ -359,14 +326,11 @@ pub fn encode_push_promise_roundtrip_test() {
   h2_frame.parse(encoded)
   |> should.equal(
     Ok(
-      #(
-        h2_frame.PushPromise(
-          stream_id: 5,
-          end_headers: True,
-          promised_stream_id: 4,
-          field_block_fragment: <<"test":utf8>>,
-        ),
-        <<>>,
+      h2_frame.PushPromise(
+        stream_id: 5,
+        end_headers: True,
+        promised_stream_id: 4,
+        field_block_fragment: <<"test":utf8>>,
       ),
     ),
   )
@@ -384,14 +348,11 @@ pub fn encode_push_promise_padded_roundtrip_test() {
   h2_frame.parse(encoded)
   |> should.equal(
     Ok(
-      #(
-        h2_frame.PushPromise(
-          stream_id: 3,
-          end_headers: False,
-          promised_stream_id: 6,
-          field_block_fragment: <<"hpack":utf8>>,
-        ),
-        <<>>,
+      h2_frame.PushPromise(
+        stream_id: 3,
+        end_headers: False,
+        promised_stream_id: 6,
+        field_block_fragment: <<"hpack":utf8>>,
       ),
     ),
   )

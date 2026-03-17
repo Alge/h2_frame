@@ -9,15 +9,12 @@ pub fn parse_continuation_test() {
   h2_frame.parse(data)
   |> should.equal(
     Ok(
-      #(
-        h2_frame.Continuation(
-          stream_id: 1,
-          end_headers: False,
-          field_block_fragment: <<
-            "hello":utf8,
-          >>,
-        ),
-        <<>>,
+      h2_frame.Continuation(
+        stream_id: 1,
+        end_headers: False,
+        field_block_fragment: <<
+          "hello":utf8,
+        >>,
       ),
     ),
   )
@@ -31,15 +28,12 @@ pub fn parse_continuation_end_headers_test() {
   h2_frame.parse(data)
   |> should.equal(
     Ok(
-      #(
-        h2_frame.Continuation(
-          stream_id: 1,
-          end_headers: True,
-          field_block_fragment: <<
-            "abc":utf8,
-          >>,
-        ),
-        <<>>,
+      h2_frame.Continuation(
+        stream_id: 1,
+        end_headers: True,
+        field_block_fragment: <<
+          "abc":utf8,
+        >>,
       ),
     ),
   )
@@ -51,13 +45,10 @@ pub fn parse_continuation_empty_fragment_test() {
   h2_frame.parse(data)
   |> should.equal(
     Ok(
-      #(
-        h2_frame.Continuation(
-          stream_id: 1,
-          end_headers: False,
-          field_block_fragment: <<>>,
-        ),
-        <<>>,
+      h2_frame.Continuation(
+        stream_id: 1,
+        end_headers: False,
+        field_block_fragment: <<>>,
       ),
     ),
   )
@@ -81,49 +72,33 @@ pub fn parse_continuation_unknown_flags_ignored_test() {
   h2_frame.parse(data)
   |> should.equal(
     Ok(
-      #(
-        h2_frame.Continuation(
-          stream_id: 1,
-          end_headers: False,
-          field_block_fragment: <<
-            "abc":utf8,
-          >>,
-        ),
-        <<>>,
+      h2_frame.Continuation(
+        stream_id: 1,
+        end_headers: False,
+        field_block_fragment: <<
+          "abc":utf8,
+        >>,
       ),
     ),
   )
 }
 
 pub fn parse_continuation_truncated_payload_test() {
-  // RFC 9113 Section 6.10: Incomplete payload
+  // RFC 9113 Section 6.10: Incomplete payload treated as malformed frame
   let data = <<
     10:size(24), 9:size(8), 0:size(8), 0:size(1), 1:size(31), "short":utf8,
   >>
   h2_frame.parse(data)
-  |> should.equal(Error(h2_frame.Incomplete))
+  |> should.equal(Error(h2_frame.MalformedFrame))
 }
 
 pub fn parse_continuation_with_trailing_data_test() {
-  // RFC 9113 Section 6.10: Trailing data from next frame returned
+  // RFC 9113 Section 6.10: Trailing data treated as malformed frame
   let data = <<
     3:size(24), 9:size(8), 0:size(8), 0:size(1), 1:size(31), "abc":utf8, 99, 99,
   >>
   h2_frame.parse(data)
-  |> should.equal(
-    Ok(
-      #(
-        h2_frame.Continuation(
-          stream_id: 1,
-          end_headers: False,
-          field_block_fragment: <<
-            "abc":utf8,
-          >>,
-        ),
-        <<99, 99>>,
-      ),
-    ),
-  )
+  |> should.equal(Error(h2_frame.MalformedFrame))
 }
 
 // --- Encode tests ---
@@ -180,13 +155,10 @@ pub fn encode_continuation_roundtrip_test() {
   h2_frame.parse(encoded)
   |> should.equal(
     Ok(
-      #(
-        h2_frame.Continuation(
-          stream_id: 3,
-          end_headers: True,
-          field_block_fragment: <<"hpack":utf8>>,
-        ),
-        <<>>,
+      h2_frame.Continuation(
+        stream_id: 3,
+        end_headers: True,
+        field_block_fragment: <<"hpack":utf8>>,
       ),
     ),
   )

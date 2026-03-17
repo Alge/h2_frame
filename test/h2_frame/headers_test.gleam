@@ -10,15 +10,12 @@ pub fn parse_headers_test() {
   h2_frame.parse(data)
   |> should.equal(
     Ok(
-      #(
-        h2_frame.Headers(
-          stream_id: 1,
-          end_stream: False,
-          end_headers: False,
-          priority: None,
-          field_block_fragment: <<"hello":utf8>>,
-        ),
-        <<>>,
+      h2_frame.Headers(
+        stream_id: 1,
+        end_stream: False,
+        end_headers: False,
+        priority: None,
+        field_block_fragment: <<"hello":utf8>>,
       ),
     ),
   )
@@ -32,15 +29,12 @@ pub fn parse_headers_end_stream_test() {
   h2_frame.parse(data)
   |> should.equal(
     Ok(
-      #(
-        h2_frame.Headers(
-          stream_id: 1,
-          end_stream: True,
-          end_headers: False,
-          priority: None,
-          field_block_fragment: <<"abc":utf8>>,
-        ),
-        <<>>,
+      h2_frame.Headers(
+        stream_id: 1,
+        end_stream: True,
+        end_headers: False,
+        priority: None,
+        field_block_fragment: <<"abc":utf8>>,
       ),
     ),
   )
@@ -54,15 +48,12 @@ pub fn parse_headers_end_headers_test() {
   h2_frame.parse(data)
   |> should.equal(
     Ok(
-      #(
-        h2_frame.Headers(
-          stream_id: 1,
-          end_stream: False,
-          end_headers: True,
-          priority: None,
-          field_block_fragment: <<"abc":utf8>>,
-        ),
-        <<>>,
+      h2_frame.Headers(
+        stream_id: 1,
+        end_stream: False,
+        end_headers: True,
+        priority: None,
+        field_block_fragment: <<"abc":utf8>>,
       ),
     ),
   )
@@ -76,15 +67,12 @@ pub fn parse_headers_end_stream_and_end_headers_test() {
   h2_frame.parse(data)
   |> should.equal(
     Ok(
-      #(
-        h2_frame.Headers(
-          stream_id: 1,
-          end_stream: True,
-          end_headers: True,
-          priority: None,
-          field_block_fragment: <<"abc":utf8>>,
-        ),
-        <<>>,
+      h2_frame.Headers(
+        stream_id: 1,
+        end_stream: True,
+        end_headers: True,
+        priority: None,
+        field_block_fragment: <<"abc":utf8>>,
       ),
     ),
   )
@@ -100,19 +88,16 @@ pub fn parse_headers_priority_test() {
   h2_frame.parse(data)
   |> should.equal(
     Ok(
-      #(
-        h2_frame.Headers(
-          stream_id: 1,
-          end_stream: False,
-          end_headers: False,
-          priority: Some(h2_frame.StreamPriority(
-            exclusive: False,
-            stream_dependency: 3,
-            weight: 15,
-          )),
-          field_block_fragment: <<"ab":utf8>>,
-        ),
-        <<>>,
+      h2_frame.Headers(
+        stream_id: 1,
+        end_stream: False,
+        end_headers: False,
+        priority: Some(h2_frame.StreamPriority(
+          exclusive: False,
+          stream_dependency: 3,
+          weight: 15,
+        )),
+        field_block_fragment: <<"ab":utf8>>,
       ),
     ),
   )
@@ -127,19 +112,16 @@ pub fn parse_headers_priority_exclusive_test() {
   h2_frame.parse(data)
   |> should.equal(
     Ok(
-      #(
-        h2_frame.Headers(
-          stream_id: 1,
-          end_stream: False,
-          end_headers: False,
-          priority: Some(h2_frame.StreamPriority(
-            exclusive: True,
-            stream_dependency: 5,
-            weight: 255,
-          )),
-          field_block_fragment: <<"ab":utf8>>,
-        ),
-        <<>>,
+      h2_frame.Headers(
+        stream_id: 1,
+        end_stream: False,
+        end_headers: False,
+        priority: Some(h2_frame.StreamPriority(
+          exclusive: True,
+          stream_dependency: 5,
+          weight: 255,
+        )),
+        field_block_fragment: <<"ab":utf8>>,
       ),
     ),
   )
@@ -155,15 +137,12 @@ pub fn parse_headers_padded_test() {
   h2_frame.parse(data)
   |> should.equal(
     Ok(
-      #(
-        h2_frame.Headers(
-          stream_id: 1,
-          end_stream: False,
-          end_headers: False,
-          priority: None,
-          field_block_fragment: <<"abc":utf8>>,
-        ),
-        <<>>,
+      h2_frame.Headers(
+        stream_id: 1,
+        end_stream: False,
+        end_headers: False,
+        priority: None,
+        field_block_fragment: <<"abc":utf8>>,
       ),
     ),
   )
@@ -180,19 +159,16 @@ pub fn parse_headers_padded_and_priority_test() {
   h2_frame.parse(data)
   |> should.equal(
     Ok(
-      #(
-        h2_frame.Headers(
-          stream_id: 1,
-          end_stream: False,
-          end_headers: False,
-          priority: Some(h2_frame.StreamPriority(
-            exclusive: True,
-            stream_dependency: 7,
-            weight: 100,
-          )),
-          field_block_fragment: <<"ab":utf8>>,
-        ),
-        <<>>,
+      h2_frame.Headers(
+        stream_id: 1,
+        end_stream: False,
+        end_headers: False,
+        priority: Some(h2_frame.StreamPriority(
+          exclusive: True,
+          stream_dependency: 7,
+          weight: 100,
+        )),
+        field_block_fragment: <<"ab":utf8>>,
       ),
     ),
   )
@@ -208,19 +184,16 @@ pub fn parse_headers_all_flags_test() {
   h2_frame.parse(data)
   |> should.equal(
     Ok(
-      #(
-        h2_frame.Headers(
-          stream_id: 1,
-          end_stream: True,
-          end_headers: True,
-          priority: Some(h2_frame.StreamPriority(
-            exclusive: False,
-            stream_dependency: 0,
-            weight: 0,
-          )),
-          field_block_fragment: <<"x":utf8>>,
-        ),
-        <<>>,
+      h2_frame.Headers(
+        stream_id: 1,
+        end_stream: True,
+        end_headers: True,
+        priority: Some(h2_frame.StreamPriority(
+          exclusive: False,
+          stream_dependency: 0,
+          weight: 0,
+        )),
+        field_block_fragment: <<"x":utf8>>,
       ),
     ),
   )
@@ -257,13 +230,13 @@ pub fn parse_headers_padded_priority_padding_exceeds_test() {
 }
 
 pub fn parse_headers_priority_truncated_test() {
-  // RFC 9113 Section 6.2: PRIORITY flag set but not enough bytes for priority fields
+  // RFC 9113 Section 6.2: PRIORITY flag set but not enough bytes for priority fields (malformed frame)
   // length=3 but priority needs 5 bytes
   let data = <<
     3:size(24), 1:size(8), 0x20:size(8), 0:size(1), 1:size(31), 0, 0, 0,
   >>
   h2_frame.parse(data)
-  |> should.equal(Error(h2_frame.Incomplete))
+  |> should.equal(Error(h2_frame.MalformedFrame))
 }
 
 pub fn parse_headers_empty_fragment_test() {
@@ -272,15 +245,12 @@ pub fn parse_headers_empty_fragment_test() {
   h2_frame.parse(data)
   |> should.equal(
     Ok(
-      #(
-        h2_frame.Headers(
-          stream_id: 1,
-          end_stream: False,
-          end_headers: False,
-          priority: None,
-          field_block_fragment: <<>>,
-        ),
-        <<>>,
+      h2_frame.Headers(
+        stream_id: 1,
+        end_stream: False,
+        end_headers: False,
+        priority: None,
+        field_block_fragment: <<>>,
       ),
     ),
   )
@@ -295,56 +265,40 @@ pub fn parse_headers_unknown_flags_ignored_test() {
   h2_frame.parse(data)
   |> should.equal(
     Ok(
-      #(
-        h2_frame.Headers(
-          stream_id: 1,
-          end_stream: False,
-          end_headers: False,
-          priority: None,
-          field_block_fragment: <<"abc":utf8>>,
-        ),
-        <<>>,
+      h2_frame.Headers(
+        stream_id: 1,
+        end_stream: False,
+        end_headers: False,
+        priority: None,
+        field_block_fragment: <<"abc":utf8>>,
       ),
     ),
   )
 }
 
 pub fn parse_headers_truncated_payload_test() {
-  // RFC 9113 Section 6.2: Incomplete payload
+  // RFC 9113 Section 6.2: Incomplete payload (malformed frame)
   let data = <<
     10:size(24), 1:size(8), 0:size(8), 0:size(1), 1:size(31), "short":utf8,
   >>
   h2_frame.parse(data)
-  |> should.equal(Error(h2_frame.Incomplete))
+  |> should.equal(Error(h2_frame.MalformedFrame))
 }
 
 pub fn parse_headers_with_trailing_data_test() {
-  // RFC 9113 Section 6.2: Trailing data from next frame returned
+  // RFC 9113 Section 6.2: Trailing data is now malformed (parse expects exactly one frame)
   let data = <<
     3:size(24), 1:size(8), 0:size(8), 0:size(1), 1:size(31), "abc":utf8, 99, 99,
   >>
   h2_frame.parse(data)
-  |> should.equal(
-    Ok(
-      #(
-        h2_frame.Headers(
-          stream_id: 1,
-          end_stream: False,
-          end_headers: False,
-          priority: None,
-          field_block_fragment: <<"abc":utf8>>,
-        ),
-        <<99, 99>>,
-      ),
-    ),
-  )
+  |> should.equal(Error(h2_frame.MalformedFrame))
 }
 
 pub fn parse_headers_padded_empty_payload_test() {
-  // RFC 9113 Section 6.2: PADDED flag set but no payload bytes at all
+  // RFC 9113 Section 6.2: PADDED flag set but no payload bytes at all (malformed frame)
   let data = <<5:size(24), 1:size(8), 8:size(8), 0:size(1), 1:size(31)>>
   h2_frame.parse(data)
-  |> should.equal(Error(h2_frame.Incomplete))
+  |> should.equal(Error(h2_frame.MalformedFrame))
 }
 
 // --- Encode tests ---
@@ -583,15 +537,12 @@ pub fn encode_headers_roundtrip_test() {
   h2_frame.parse(encoded)
   |> should.equal(
     Ok(
-      #(
-        h2_frame.Headers(
-          stream_id: 5,
-          end_stream: True,
-          end_headers: True,
-          priority: None,
-          field_block_fragment: <<"test":utf8>>,
-        ),
-        <<>>,
+      h2_frame.Headers(
+        stream_id: 5,
+        end_stream: True,
+        end_headers: True,
+        priority: None,
+        field_block_fragment: <<"test":utf8>>,
       ),
     ),
   )
@@ -615,19 +566,16 @@ pub fn encode_headers_padded_priority_roundtrip_test() {
   h2_frame.parse(encoded)
   |> should.equal(
     Ok(
-      #(
-        h2_frame.Headers(
-          stream_id: 3,
-          end_stream: False,
-          end_headers: True,
-          priority: Some(h2_frame.StreamPriority(
-            exclusive: True,
-            stream_dependency: 10,
-            weight: 42,
-          )),
-          field_block_fragment: <<"hpack":utf8>>,
-        ),
-        <<>>,
+      h2_frame.Headers(
+        stream_id: 3,
+        end_stream: False,
+        end_headers: True,
+        priority: Some(h2_frame.StreamPriority(
+          exclusive: True,
+          stream_dependency: 10,
+          weight: 42,
+        )),
+        field_block_fragment: <<"hpack":utf8>>,
       ),
     ),
   )

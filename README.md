@@ -17,10 +17,17 @@ gleam add h2_frame
 
 ### Parsing
 
+Parsing is done in two phases: first extract a raw frame from the buffer, then parse it.
+
 ```gleam
 import h2_frame
 
-let assert Ok(#(frame, rest)) = h2_frame.parse(data)
+// Extract a single frame from a buffer (e.g. data read from a socket)
+let assert Ok(#(frame_data, rest)) =
+  h2_frame.extract_frame(buffer, max_frame_size)
+
+// Parse the extracted frame
+let assert Ok(frame) = h2_frame.parse(frame_data)
 ```
 
 ### Encoding

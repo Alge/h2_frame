@@ -9,12 +9,7 @@ pub fn parse_data_test() {
   >>
   h2_frame.parse(data)
   |> should.equal(
-    Ok(
-      #(
-        h2_frame.Data(stream_id: 1, end_stream: False, data: <<"hello":utf8>>),
-        <<>>,
-      ),
-    ),
+    Ok(h2_frame.Data(stream_id: 1, end_stream: False, data: <<"hello":utf8>>)),
   )
 }
 
@@ -25,12 +20,7 @@ pub fn parse_data_end_stream_test() {
   >>
   h2_frame.parse(data)
   |> should.equal(
-    Ok(
-      #(
-        h2_frame.Data(stream_id: 1, end_stream: True, data: <<"bye":utf8>>),
-        <<>>,
-      ),
-    ),
+    Ok(h2_frame.Data(stream_id: 1, end_stream: True, data: <<"bye":utf8>>)),
   )
 }
 
@@ -44,12 +34,7 @@ pub fn parse_data_padded_test() {
   >>
   h2_frame.parse(data)
   |> should.equal(
-    Ok(
-      #(
-        h2_frame.Data(stream_id: 1, end_stream: False, data: <<"hi":utf8>>),
-        <<>>,
-      ),
-    ),
+    Ok(h2_frame.Data(stream_id: 1, end_stream: False, data: <<"hi":utf8>>)),
   )
 }
 
@@ -61,12 +46,7 @@ pub fn parse_data_padded_end_stream_test() {
   >>
   h2_frame.parse(data)
   |> should.equal(
-    Ok(
-      #(
-        h2_frame.Data(stream_id: 1, end_stream: True, data: <<"hi":utf8>>),
-        <<>>,
-      ),
-    ),
+    Ok(h2_frame.Data(stream_id: 1, end_stream: True, data: <<"hi":utf8>>)),
   )
 }
 
@@ -78,12 +58,7 @@ pub fn parse_data_padded_zero_padding_test() {
   >>
   h2_frame.parse(data)
   |> should.equal(
-    Ok(
-      #(
-        h2_frame.Data(stream_id: 1, end_stream: False, data: <<"abc":utf8>>),
-        <<>>,
-      ),
-    ),
+    Ok(h2_frame.Data(stream_id: 1, end_stream: False, data: <<"abc":utf8>>)),
   )
 }
 
@@ -106,7 +81,7 @@ pub fn parse_data_padded_max_padding_test() {
   >>
   h2_frame.parse(data)
   |> should.equal(
-    Ok(#(h2_frame.Data(stream_id: 1, end_stream: False, data: <<>>), <<>>)),
+    Ok(h2_frame.Data(stream_id: 1, end_stream: False, data: <<>>)),
   )
 }
 
@@ -137,7 +112,7 @@ pub fn parse_data_empty_payload_test() {
   let data = <<0:size(24), 0:size(8), 0:size(8), 0:size(1), 1:size(31)>>
   h2_frame.parse(data)
   |> should.equal(
-    Ok(#(h2_frame.Data(stream_id: 1, end_stream: False, data: <<>>), <<>>)),
+    Ok(h2_frame.Data(stream_id: 1, end_stream: False, data: <<>>)),
   )
 }
 
@@ -151,57 +126,48 @@ pub fn parse_data_unknown_flags_ignored_test() {
   >>
   h2_frame.parse(data)
   |> should.equal(
-    Ok(
-      #(
-        h2_frame.Data(stream_id: 1, end_stream: True, data: <<"hi":utf8>>),
-        <<>>,
-      ),
-    ),
+    Ok(h2_frame.Data(stream_id: 1, end_stream: True, data: <<"hi":utf8>>)),
   )
 }
 
 pub fn parse_data_truncated_payload_test() {
-  // RFC 9113 Section 6.1: Incomplete payload when stream has insufficient data
+  // RFC 9113 Section 6.1: Incomplete payload when frame length doesn't match actual bytes
+  // Parser expects exactly one frame worth of bytes; truncated input is MalformedFrame
   let data = <<
     10:size(24), 0:size(8), 0:size(8), 0:size(1), 1:size(31), "short":utf8,
   >>
   h2_frame.parse(data)
-  |> should.equal(Error(h2_frame.Incomplete))
+  |> should.equal(Error(h2_frame.MalformedFrame))
 }
 
 pub fn parse_data_with_trailing_data_test() {
-  // RFC 9113 Section 6.1: DATA payload parsed correctly with trailing data from next frame
+  // RFC 9113 Section 6.1: Parser expects exactly one frame worth of bytes
+  // Trailing bytes after a complete frame are now considered MalformedFrame
   let data = <<
     5:size(24), 0:size(8), 0:size(8), 0:size(1), 1:size(31), "hello":utf8, 99,
     99,
   >>
   h2_frame.parse(data)
-  |> should.equal(
-    Ok(
-      #(h2_frame.Data(stream_id: 1, end_stream: False, data: <<"hello":utf8>>), <<
-        99,
-        99,
-      >>),
-    ),
-  )
+  |> should.equal(Error(h2_frame.MalformedFrame))
 }
 
 pub fn parse_data_padded_empty_payload_test() {
   // RFC 9113 Section 6.1: PADDED flag set but no payload bytes at all
-  // (not even the pad_length byte)
+  // Parser expects exactly one frame worth of bytes; missing bytes are MalformedFrame
   let data = <<5:size(24), 0:size(8), 8:size(8), 0:size(1), 1:size(31)>>
   h2_frame.parse(data)
-  |> should.equal(Error(h2_frame.Incomplete))
+  |> should.equal(Error(h2_frame.MalformedFrame))
 }
 
 pub fn parse_data_padded_truncated_payload_test() {
   // RFC 9113 Section 6.1: PADDED frame with insufficient bytes for padding
+  // Parser expects exactly one frame worth of bytes; truncated input is MalformedFrame
   // length=10, pad_length=5, but only 3 bytes of data+padding available
   let data = <<
     10:size(24), 0:size(8), 8:size(8), 0:size(1), 1:size(31), 5:size(8), 1, 2, 3,
   >>
   h2_frame.parse(data)
-  |> should.equal(Error(h2_frame.Incomplete))
+  |> should.equal(Error(h2_frame.MalformedFrame))
 }
 
 // --- Encode tests ---
@@ -338,12 +304,7 @@ pub fn encode_data_roundtrip_test() {
     )
   h2_frame.parse(encoded)
   |> should.equal(
-    Ok(
-      #(
-        h2_frame.Data(stream_id: 5, end_stream: True, data: <<"test":utf8>>),
-        <<>>,
-      ),
-    ),
+    Ok(h2_frame.Data(stream_id: 5, end_stream: True, data: <<"test":utf8>>)),
   )
 }
 
@@ -358,11 +319,6 @@ pub fn encode_data_padded_roundtrip_test() {
     )
   h2_frame.parse(encoded)
   |> should.equal(
-    Ok(
-      #(
-        h2_frame.Data(stream_id: 3, end_stream: False, data: <<"abc":utf8>>),
-        <<>>,
-      ),
-    ),
+    Ok(h2_frame.Data(stream_id: 3, end_stream: False, data: <<"abc":utf8>>)),
   )
 }

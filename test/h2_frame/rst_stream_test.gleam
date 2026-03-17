@@ -8,12 +8,7 @@ pub fn parse_rst_stream_test() {
   >>
   h2_frame.parse(data)
   |> should.equal(
-    Ok(
-      #(
-        h2_frame.RstStream(stream_id: 1, error_code: h2_frame.ProtocolError),
-        <<>>,
-      ),
-    ),
+    Ok(h2_frame.RstStream(stream_id: 1, error_code: h2_frame.ProtocolError)),
   )
 }
 
@@ -24,7 +19,7 @@ pub fn parse_rst_stream_no_error_test() {
   >>
   h2_frame.parse(data)
   |> should.equal(
-    Ok(#(h2_frame.RstStream(stream_id: 1, error_code: h2_frame.NoError), <<>>)),
+    Ok(h2_frame.RstStream(stream_id: 1, error_code: h2_frame.NoError)),
   )
 }
 
@@ -35,7 +30,7 @@ pub fn parse_rst_stream_cancel_test() {
   >>
   h2_frame.parse(data)
   |> should.equal(
-    Ok(#(h2_frame.RstStream(stream_id: 5, error_code: h2_frame.Cancel), <<>>)),
+    Ok(h2_frame.RstStream(stream_id: 5, error_code: h2_frame.Cancel)),
   )
 }
 
@@ -46,15 +41,10 @@ pub fn parse_rst_stream_unknown_error_code_test() {
   >>
   h2_frame.parse(data)
   |> should.equal(
-    Ok(
-      #(
-        h2_frame.RstStream(
-          stream_id: 1,
-          error_code: h2_frame.UnknownErrorCode(0xFF),
-        ),
-        <<>>,
-      ),
-    ),
+    Ok(h2_frame.RstStream(
+      stream_id: 1,
+      error_code: h2_frame.UnknownErrorCode(0xFF),
+    )),
   )
 }
 
@@ -92,37 +82,25 @@ pub fn parse_rst_stream_unknown_flags_ignored_test() {
   >>
   h2_frame.parse(data)
   |> should.equal(
-    Ok(
-      #(
-        h2_frame.RstStream(stream_id: 1, error_code: h2_frame.ProtocolError),
-        <<>>,
-      ),
-    ),
+    Ok(h2_frame.RstStream(stream_id: 1, error_code: h2_frame.ProtocolError)),
   )
 }
 
 pub fn parse_rst_stream_truncated_payload_test() {
-  // RFC 9113 Section 6.4: Incomplete payload
+  // RFC 9113 Section 6.4: Incomplete payload (parse expects exact frame bytes)
   let data = <<4:size(24), 3:size(8), 0:size(8), 0:size(1), 1:size(31), 0, 0>>
   h2_frame.parse(data)
-  |> should.equal(Error(h2_frame.Incomplete))
+  |> should.equal(Error(h2_frame.MalformedFrame))
 }
 
 pub fn parse_rst_stream_with_trailing_data_test() {
-  // RFC 9113 Section 6.4: Trailing data from next frame returned
+  // RFC 9113 Section 6.4: Trailing data causes MalformedFrame error (parse expects exact frame bytes)
   let data = <<
     4:size(24), 3:size(8), 0:size(8), 0:size(1), 1:size(31), 0x01:size(32), 99,
     99,
   >>
   h2_frame.parse(data)
-  |> should.equal(
-    Ok(
-      #(h2_frame.RstStream(stream_id: 1, error_code: h2_frame.ProtocolError), <<
-        99,
-        99,
-      >>),
-    ),
-  )
+  |> should.equal(Error(h2_frame.MalformedFrame))
 }
 
 // --- Encode tests ---
@@ -176,6 +154,6 @@ pub fn encode_rst_stream_roundtrip_test() {
     h2_frame.encode_rst_stream(stream_id: 3, error_code: h2_frame.Cancel)
   h2_frame.parse(encoded)
   |> should.equal(
-    Ok(#(h2_frame.RstStream(stream_id: 3, error_code: h2_frame.Cancel), <<>>)),
+    Ok(h2_frame.RstStream(stream_id: 3, error_code: h2_frame.Cancel)),
   )
 }

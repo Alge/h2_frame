@@ -11,13 +11,10 @@ pub fn parse_goaway_test() {
   h2_frame.parse(data)
   |> should.equal(
     Ok(
-      #(
-        h2_frame.Goaway(
-          last_stream_id: 1,
-          error_code: h2_frame.NoError,
-          debug_data: <<>>,
-        ),
-        <<>>,
+      h2_frame.Goaway(
+        last_stream_id: 1,
+        error_code: h2_frame.NoError,
+        debug_data: <<>>,
       ),
     ),
   )
@@ -32,13 +29,10 @@ pub fn parse_goaway_with_error_test() {
   h2_frame.parse(data)
   |> should.equal(
     Ok(
-      #(
-        h2_frame.Goaway(
-          last_stream_id: 5,
-          error_code: h2_frame.ProtocolError,
-          debug_data: <<>>,
-        ),
-        <<>>,
+      h2_frame.Goaway(
+        last_stream_id: 5,
+        error_code: h2_frame.ProtocolError,
+        debug_data: <<>>,
       ),
     ),
   )
@@ -53,13 +47,10 @@ pub fn parse_goaway_with_debug_data_test() {
   h2_frame.parse(data)
   |> should.equal(
     Ok(
-      #(
-        h2_frame.Goaway(
-          last_stream_id: 1,
-          error_code: h2_frame.NoError,
-          debug_data: <<"hello":utf8>>,
-        ),
-        <<>>,
+      h2_frame.Goaway(
+        last_stream_id: 1,
+        error_code: h2_frame.NoError,
+        debug_data: <<"hello":utf8>>,
       ),
     ),
   )
@@ -74,13 +65,10 @@ pub fn parse_goaway_zero_last_stream_id_test() {
   h2_frame.parse(data)
   |> should.equal(
     Ok(
-      #(
-        h2_frame.Goaway(
-          last_stream_id: 0,
-          error_code: h2_frame.NoError,
-          debug_data: <<>>,
-        ),
-        <<>>,
+      h2_frame.Goaway(
+        last_stream_id: 0,
+        error_code: h2_frame.NoError,
+        debug_data: <<>>,
       ),
     ),
   )
@@ -95,13 +83,10 @@ pub fn parse_goaway_unknown_error_code_test() {
   h2_frame.parse(data)
   |> should.equal(
     Ok(
-      #(
-        h2_frame.Goaway(
-          last_stream_id: 1,
-          error_code: h2_frame.UnknownErrorCode(0xFF),
-          debug_data: <<>>,
-        ),
-        <<>>,
+      h2_frame.Goaway(
+        last_stream_id: 1,
+        error_code: h2_frame.UnknownErrorCode(0xFF),
+        debug_data: <<>>,
       ),
     ),
   )
@@ -126,13 +111,10 @@ pub fn parse_goaway_unknown_flags_ignored_test() {
   h2_frame.parse(data)
   |> should.equal(
     Ok(
-      #(
-        h2_frame.Goaway(
-          last_stream_id: 1,
-          error_code: h2_frame.NoError,
-          debug_data: <<>>,
-        ),
-        <<>>,
+      h2_frame.Goaway(
+        last_stream_id: 1,
+        error_code: h2_frame.NoError,
+        debug_data: <<>>,
       ),
     ),
   )
@@ -151,54 +133,35 @@ pub fn parse_goaway_too_short_length_test() {
 
 pub fn parse_goaway_truncated_payload_test() {
   // RFC 9113 Section 6.8: Header says 8 bytes but not enough data available
+  // parse expects exactly one frame's worth of bytes, so this is now MalformedFrame
   let data = <<
     8:size(24), 7:size(8), 0:size(8), 0:size(1), 0:size(31), 0:size(1),
     1:size(31),
   >>
   h2_frame.parse(data)
-  |> should.equal(Error(h2_frame.Incomplete))
+  |> should.equal(Error(h2_frame.MalformedFrame))
 }
 
 pub fn parse_goaway_with_trailing_data_test() {
-  // RFC 9113 Section 6.8: Trailing data from next frame returned
+  // RFC 9113 Section 6.8: Trailing data is no longer accepted by parse
+  // parse expects exactly one frame's worth of bytes, so this is now MalformedFrame
   let data = <<
     8:size(24), 7:size(8), 0:size(8), 0:size(1), 0:size(31), 0:size(1),
     1:size(31), 0x00:size(32), 99, 99,
   >>
   h2_frame.parse(data)
-  |> should.equal(
-    Ok(
-      #(
-        h2_frame.Goaway(
-          last_stream_id: 1,
-          error_code: h2_frame.NoError,
-          debug_data: <<>>,
-        ),
-        <<99, 99>>,
-      ),
-    ),
-  )
+  |> should.equal(Error(h2_frame.MalformedFrame))
 }
 
 pub fn parse_goaway_debug_data_with_trailing_test() {
-  // RFC 9113 Section 6.8: Debug data AND trailing data from next frame
+  // RFC 9113 Section 6.8: Trailing data is no longer accepted by parse
+  // parse expects exactly one frame's worth of bytes, so this is now MalformedFrame
   let data = <<
     11:size(24), 7:size(8), 0:size(8), 0:size(1), 0:size(31), 0:size(1),
     1:size(31), 0x02:size(32), "err":utf8, 99, 99,
   >>
   h2_frame.parse(data)
-  |> should.equal(
-    Ok(
-      #(
-        h2_frame.Goaway(
-          last_stream_id: 1,
-          error_code: h2_frame.InternalError,
-          debug_data: <<"err":utf8>>,
-        ),
-        <<99, 99>>,
-      ),
-    ),
-  )
+  |> should.equal(Error(h2_frame.MalformedFrame))
 }
 
 // --- Encode tests ---
@@ -273,13 +236,10 @@ pub fn encode_goaway_roundtrip_test() {
   h2_frame.parse(encoded)
   |> should.equal(
     Ok(
-      #(
-        h2_frame.Goaway(
-          last_stream_id: 3,
-          error_code: h2_frame.InternalError,
-          debug_data: <<"err":utf8>>,
-        ),
-        <<>>,
+      h2_frame.Goaway(
+        last_stream_id: 3,
+        error_code: h2_frame.InternalError,
+        debug_data: <<"err":utf8>>,
       ),
     ),
   )

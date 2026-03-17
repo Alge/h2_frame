@@ -10,17 +10,12 @@ pub fn parse_priority_test() {
   >>
   h2_frame.parse(data)
   |> should.equal(
-    Ok(
-      #(
-        h2_frame.Priority(
-          stream_id: 1,
-          exclusive: False,
-          stream_dependency: 3,
-          weight: 15,
-        ),
-        <<>>,
-      ),
-    ),
+    Ok(h2_frame.Priority(
+      stream_id: 1,
+      exclusive: False,
+      stream_dependency: 3,
+      weight: 15,
+    )),
   )
 }
 
@@ -32,17 +27,12 @@ pub fn parse_priority_exclusive_test() {
   >>
   h2_frame.parse(data)
   |> should.equal(
-    Ok(
-      #(
-        h2_frame.Priority(
-          stream_id: 1,
-          exclusive: True,
-          stream_dependency: 5,
-          weight: 255,
-        ),
-        <<>>,
-      ),
-    ),
+    Ok(h2_frame.Priority(
+      stream_id: 1,
+      exclusive: True,
+      stream_dependency: 5,
+      weight: 255,
+    )),
   )
 }
 
@@ -54,17 +44,12 @@ pub fn parse_priority_zero_weight_test() {
   >>
   h2_frame.parse(data)
   |> should.equal(
-    Ok(
-      #(
-        h2_frame.Priority(
-          stream_id: 1,
-          exclusive: False,
-          stream_dependency: 0,
-          weight: 0,
-        ),
-        <<>>,
-      ),
-    ),
+    Ok(h2_frame.Priority(
+      stream_id: 1,
+      exclusive: False,
+      stream_dependency: 0,
+      weight: 0,
+    )),
   )
 }
 
@@ -115,49 +100,32 @@ pub fn parse_priority_unknown_flags_ignored_test() {
   >>
   h2_frame.parse(data)
   |> should.equal(
-    Ok(
-      #(
-        h2_frame.Priority(
-          stream_id: 1,
-          exclusive: False,
-          stream_dependency: 3,
-          weight: 15,
-        ),
-        <<>>,
-      ),
-    ),
+    Ok(h2_frame.Priority(
+      stream_id: 1,
+      exclusive: False,
+      stream_dependency: 3,
+      weight: 15,
+    )),
   )
 }
 
 pub fn parse_priority_truncated_payload_test() {
-  // RFC 9113 Section 6.3: Incomplete payload
+  // RFC 9113 Section 6.3: Incomplete payload - malformed frame
   let data = <<
     5:size(24), 2:size(8), 0:size(8), 0:size(1), 1:size(31), 0, 0, 0,
   >>
   h2_frame.parse(data)
-  |> should.equal(Error(h2_frame.Incomplete))
+  |> should.equal(Error(h2_frame.MalformedFrame))
 }
 
 pub fn parse_priority_with_trailing_data_test() {
-  // RFC 9113 Section 6.3: Trailing data from next frame returned
+  // RFC 9113 Section 6.3: Trailing data causes malformed frame error
   let data = <<
     5:size(24), 2:size(8), 0:size(8), 0:size(1), 1:size(31), 0:size(1),
     3:size(31), 15:size(8), 99, 99,
   >>
   h2_frame.parse(data)
-  |> should.equal(
-    Ok(
-      #(
-        h2_frame.Priority(
-          stream_id: 1,
-          exclusive: False,
-          stream_dependency: 3,
-          weight: 15,
-        ),
-        <<99, 99>>,
-      ),
-    ),
-  )
+  |> should.equal(Error(h2_frame.MalformedFrame))
 }
 
 // --- Encode tests ---
@@ -232,16 +200,11 @@ pub fn encode_priority_roundtrip_test() {
     )
   h2_frame.parse(encoded)
   |> should.equal(
-    Ok(
-      #(
-        h2_frame.Priority(
-          stream_id: 7,
-          exclusive: True,
-          stream_dependency: 10,
-          weight: 42,
-        ),
-        <<>>,
-      ),
-    ),
+    Ok(h2_frame.Priority(
+      stream_id: 7,
+      exclusive: True,
+      stream_dependency: 10,
+      weight: 42,
+    )),
   )
 }

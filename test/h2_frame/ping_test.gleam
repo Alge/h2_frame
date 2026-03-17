@@ -9,7 +9,7 @@ pub fn parse_ping_test() {
   >>
   h2_frame.parse(data)
   |> should.equal(
-    Ok(#(h2_frame.Ping(ack: False, data: <<1, 2, 3, 4, 5, 6, 7, 8>>), <<>>)),
+    Ok(h2_frame.Ping(ack: False, data: <<1, 2, 3, 4, 5, 6, 7, 8>>)),
   )
 }
 
@@ -21,7 +21,7 @@ pub fn parse_ping_ack_test() {
   >>
   h2_frame.parse(data)
   |> should.equal(
-    Ok(#(h2_frame.Ping(ack: True, data: <<0, 0, 0, 0, 0, 0, 0, 0>>), <<>>)),
+    Ok(h2_frame.Ping(ack: True, data: <<0, 0, 0, 0, 0, 0, 0, 0>>)),
   )
 }
 
@@ -52,7 +52,7 @@ pub fn parse_ping_unknown_flags_ignored_test() {
   >>
   h2_frame.parse(data)
   |> should.equal(
-    Ok(#(h2_frame.Ping(ack: True, data: <<1, 2, 3, 4, 5, 6, 7, 8>>), <<>>)),
+    Ok(h2_frame.Ping(ack: True, data: <<1, 2, 3, 4, 5, 6, 7, 8>>)),
   )
 }
 
@@ -64,31 +64,27 @@ pub fn parse_ping_unknown_flags_no_ack_test() {
   >>
   h2_frame.parse(data)
   |> should.equal(
-    Ok(#(h2_frame.Ping(ack: False, data: <<1, 2, 3, 4, 5, 6, 7, 8>>), <<>>)),
+    Ok(h2_frame.Ping(ack: False, data: <<1, 2, 3, 4, 5, 6, 7, 8>>)),
   )
 }
 
 pub fn parse_ping_truncated_payload_test() {
-  // RFC 9113 Section 6.7: Incomplete payload when stream has insufficient data
+  // RFC 9113 Section 6.7: Truncated payload treated as malformed frame
   let data = <<
     8:size(24), 6:size(8), 0:size(8), 0:size(1), 0:size(31), 1, 2, 3, 4,
   >>
   h2_frame.parse(data)
-  |> should.equal(Error(h2_frame.Incomplete))
+  |> should.equal(Error(h2_frame.MalformedFrame))
 }
 
 pub fn parse_ping_with_trailing_data_test() {
-  // RFC 9113 Section 6.7: PING payload parsed correctly with trailing data from next frame
+  // RFC 9113 Section 6.7: Trailing data treated as malformed frame
   let data = <<
     8:size(24), 6:size(8), 0:size(8), 0:size(1), 0:size(31), 1, 2, 3, 4, 5, 6, 7,
     8, 99, 99,
   >>
   h2_frame.parse(data)
-  |> should.equal(
-    Ok(
-      #(h2_frame.Ping(ack: False, data: <<1, 2, 3, 4, 5, 6, 7, 8>>), <<99, 99>>),
-    ),
-  )
+  |> should.equal(Error(h2_frame.MalformedFrame))
 }
 
 // --- Encode tests ---
@@ -140,11 +136,6 @@ pub fn encode_ping_roundtrip_test() {
     h2_frame.encode_ping(ack: False, data: <<10, 20, 30, 40, 50, 60, 70, 80>>)
   h2_frame.parse(encoded)
   |> should.equal(
-    Ok(
-      #(
-        h2_frame.Ping(ack: False, data: <<10, 20, 30, 40, 50, 60, 70, 80>>),
-        <<>>,
-      ),
-    ),
+    Ok(h2_frame.Ping(ack: False, data: <<10, 20, 30, 40, 50, 60, 70, 80>>)),
   )
 }

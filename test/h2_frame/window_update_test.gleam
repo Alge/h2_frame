@@ -9,9 +9,7 @@ pub fn parse_window_update_test() {
   >>
   h2_frame.parse(data)
   |> should.equal(
-    Ok(
-      #(h2_frame.WindowUpdate(stream_id: 1, window_size_increment: 1000), <<>>),
-    ),
+    Ok(h2_frame.WindowUpdate(stream_id: 1, window_size_increment: 1000)),
   )
 }
 
@@ -23,12 +21,7 @@ pub fn parse_window_update_connection_test() {
   >>
   h2_frame.parse(data)
   |> should.equal(
-    Ok(
-      #(
-        h2_frame.WindowUpdate(stream_id: 0, window_size_increment: 65_535),
-        <<>>,
-      ),
-    ),
+    Ok(h2_frame.WindowUpdate(stream_id: 0, window_size_increment: 65_535)),
   )
 }
 
@@ -40,15 +33,7 @@ pub fn parse_window_update_max_increment_test() {
   >>
   h2_frame.parse(data)
   |> should.equal(
-    Ok(
-      #(
-        h2_frame.WindowUpdate(
-          stream_id: 1,
-          window_size_increment: 2_147_483_647,
-        ),
-        <<>>,
-      ),
-    ),
+    Ok(h2_frame.WindowUpdate(stream_id: 1, window_size_increment: 2_147_483_647)),
   )
 }
 
@@ -103,34 +88,25 @@ pub fn parse_window_update_unknown_flags_ignored_test() {
   >>
   h2_frame.parse(data)
   |> should.equal(
-    Ok(
-      #(h2_frame.WindowUpdate(stream_id: 1, window_size_increment: 1000), <<>>),
-    ),
+    Ok(h2_frame.WindowUpdate(stream_id: 1, window_size_increment: 1000)),
   )
 }
 
 pub fn parse_window_update_truncated_payload_test() {
-  // RFC 9113 Section 6.9: Incomplete payload
+  // RFC 9113 Section 6.9: Incomplete payload is now treated as MalformedFrame
   let data = <<4:size(24), 8:size(8), 0:size(8), 0:size(1), 1:size(31), 0, 0>>
   h2_frame.parse(data)
-  |> should.equal(Error(h2_frame.Incomplete))
+  |> should.equal(Error(h2_frame.MalformedFrame))
 }
 
 pub fn parse_window_update_with_trailing_data_test() {
-  // RFC 9113 Section 6.9: Trailing data from next frame returned
+  // RFC 9113 Section 6.9: Trailing data is now treated as MalformedFrame
   let data = <<
     4:size(24), 8:size(8), 0:size(8), 0:size(1), 1:size(31), 0:size(1),
     1000:size(31), 99, 99,
   >>
   h2_frame.parse(data)
-  |> should.equal(
-    Ok(
-      #(h2_frame.WindowUpdate(stream_id: 1, window_size_increment: 1000), <<
-        99,
-        99,
-      >>),
-    ),
-  )
+  |> should.equal(Error(h2_frame.MalformedFrame))
 }
 
 // --- Encode tests ---
@@ -178,8 +154,6 @@ pub fn encode_window_update_roundtrip_test() {
     h2_frame.encode_window_update(stream_id: 3, window_size_increment: 5000)
   h2_frame.parse(encoded)
   |> should.equal(
-    Ok(
-      #(h2_frame.WindowUpdate(stream_id: 3, window_size_increment: 5000), <<>>),
-    ),
+    Ok(h2_frame.WindowUpdate(stream_id: 3, window_size_increment: 5000)),
   )
 }
