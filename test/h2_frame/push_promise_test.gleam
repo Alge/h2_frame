@@ -90,6 +90,17 @@ pub fn parse_push_promise_stream_id_zero_test() {
   |> should.equal(Error(h2_frame.ConnectionError(h2_frame.ProtocolError)))
 }
 
+pub fn parse_push_promise_promised_stream_id_zero_test() {
+  // RFC 9113 Section 6.6: Promised stream ID of 0x00 is invalid
+  // MUST be treated as a connection error of type PROTOCOL_ERROR
+  let data = <<
+    7:size(24), 5:size(8), 0:size(8), 0:size(1), 1:size(31), 0:size(1),
+    0:size(31), "abc":utf8,
+  >>
+  h2_frame.parse(data)
+  |> should.equal(Error(h2_frame.ConnectionError(h2_frame.ProtocolError)))
+}
+
 pub fn parse_push_promise_padding_exceeds_payload_test() {
   // RFC 9113 Section 6.6: Padding length >= payload length is PROTOCOL_ERROR
   // length=6, pad_length=6 leaves no room

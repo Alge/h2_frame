@@ -407,6 +407,11 @@ fn parse_push_promise(data: BitArray) -> Result(Frame, FrameError) {
           data:bytes-size(length - pad_length - 1 * padded - 4),
           _padding:bytes-size(pad_length),
         >> -> {
+          // RFC 9113 Section 6.6: Promised stream ID of 0x00 is invalid
+          use <- bool.guard(
+            promised_stream_id == 0,
+            Error(ConnectionError(ProtocolError)),
+          )
           Ok(PushPromise(
             stream_id: stream_id,
             end_headers: end_headers == 1,
