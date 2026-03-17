@@ -109,6 +109,19 @@ pub fn parse_priority_unknown_flags_ignored_test() {
   )
 }
 
+pub fn parse_priority_self_dependency_test() {
+  // RFC 9113 Section 5.3.1: A stream cannot depend on itself
+  // MUST be treated as a stream error of type PROTOCOL_ERROR
+  let data = <<
+    5:size(24), 2:size(8), 0:size(8), 0:size(1), 1:size(31), 0:size(1),
+    1:size(31), 15:size(8),
+  >>
+  h2_frame.parse(data)
+  |> should.equal(
+    Error(h2_frame.StreamError(stream_id: 1, error_code: h2_frame.ProtocolError)),
+  )
+}
+
 pub fn parse_priority_truncated_payload_test() {
   // RFC 9113 Section 6.3: Incomplete payload - malformed frame
   let data = <<

@@ -298,6 +298,11 @@ fn parse_priority(data: BitArray) -> Result(Frame, FrameError) {
 
       case payload {
         <<exclusive:size(1), stream_dependency:size(31), weight:size(8)>> -> {
+          // RFC 9113 Section 5.3.1: A stream cannot depend on itself
+          use <- bool.guard(
+            stream_id == stream_dependency,
+            Error(StreamError(stream_id, ProtocolError)),
+          )
           Ok(Priority(
             stream_id: stream_id,
             exclusive: exclusive == 1,
