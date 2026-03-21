@@ -208,6 +208,52 @@ pub fn parse_headers_stream_id_zero_test() {
   |> should.equal(Error(h2_frame.ConnectionError(h2_frame.ProtocolError)))
 }
 
+pub fn parse_headers_padded_max_padding_test() {
+  // RFC 9113 Section 6.2: pad_length < length is valid
+  // length=4, pad_length=3: 1 (pad_length) + 0 (fragment) + 3 (padding) = 4
+  let data = <<
+    4:size(24), 1:size(8), 8:size(8), 0:size(1), 1:size(31), 3:size(8), 0, 0,
+    0,
+  >>
+  h2_frame.decode_frame(data)
+  |> should.equal(
+    Ok(
+      h2_frame.Headers(
+        stream_id: 1,
+        end_stream: False,
+        end_headers: False,
+        priority: None,
+        field_block_fragment: <<>>,
+      ),
+    ),
+  )
+}
+
+pub fn parse_headers_padded_priority_max_padding_test() {
+  // RFC 9113 Section 6.2: pad_length < length is valid with PRIORITY
+  // length=9, pad_length=3: 1 (pad_length) + 5 (priority) + 0 (fragment) + 3 (padding) = 9
+  let data = <<
+    9:size(24), 1:size(8), 0x28:size(8), 0:size(1), 1:size(31), 3:size(8),
+    0:size(1), 0:size(31), 0:size(8), 0, 0, 0,
+  >>
+  h2_frame.decode_frame(data)
+  |> should.equal(
+    Ok(
+      h2_frame.Headers(
+        stream_id: 1,
+        end_stream: False,
+        end_headers: False,
+        priority: Some(h2_frame.StreamPriority(
+          exclusive: False,
+          stream_dependency: 0,
+          weight: 0,
+        )),
+        field_block_fragment: <<>>,
+      ),
+    ),
+  )
+}
+
 pub fn parse_headers_padding_exceeds_payload_test() {
   // RFC 9113 Section 6.2: Padding length >= payload length is PROTOCOL_ERROR
   // length=3, pad_length=3 leaves no room for fragment

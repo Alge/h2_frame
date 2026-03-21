@@ -101,6 +101,26 @@ pub fn parse_push_promise_promised_stream_id_zero_test() {
   |> should.equal(Error(h2_frame.ConnectionError(h2_frame.ProtocolError)))
 }
 
+pub fn parse_push_promise_padded_max_padding_test() {
+  // RFC 9113 Section 6.6: pad_length < length is valid
+  // length=8, pad_length=3: 1 (pad_length) + 4 (promised stream ID) + 0 (fragment) + 3 (padding) = 8
+  let data = <<
+    8:size(24), 5:size(8), 8:size(8), 0:size(1), 1:size(31), 3:size(8),
+    0:size(1), 2:size(31), 0, 0, 0,
+  >>
+  h2_frame.decode_frame(data)
+  |> should.equal(
+    Ok(
+      h2_frame.PushPromise(
+        stream_id: 1,
+        end_headers: False,
+        promised_stream_id: 2,
+        field_block_fragment: <<>>,
+      ),
+    ),
+  )
+}
+
 pub fn parse_push_promise_padding_exceeds_payload_test() {
   // RFC 9113 Section 6.6: Padding length >= payload length is PROTOCOL_ERROR
   // length=6, pad_length=6 leaves no room

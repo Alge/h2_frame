@@ -241,9 +241,14 @@ fn decode_headers(data: BitArray) -> Result(Frame, FrameError) {
       // End of deprecated priority part
       payload:bytes-size(length - 1 * padded - 5 * priority),
     >> -> {
-      // Make sure the pad length is not greater than the reported length of the payload
+      // RFC 9113 Section 6.2: padding length >= frame payload length is PROTOCOL_ERROR
       use <- bool.guard(
-        padded == 1 && pad_length + 1 + 5 * priority >= length,
+        padded == 1 && pad_length >= length,
+        Error(ConnectionError(ProtocolError)),
+      )
+      // Padding + fixed fields must fit within the payload
+      use <- bool.guard(
+        padded == 1 && pad_length + 1 + 5 * priority > length,
         Error(ConnectionError(ProtocolError)),
       )
 
@@ -395,9 +400,14 @@ fn decode_push_promise(data: BitArray) -> Result(Frame, FrameError) {
       pad_length:size(8 * padded),
       payload:bytes-size(length - 1 * padded),
     >> -> {
-      // Make sure the pad length is not greater than the reported length of the payload
+      // RFC 9113 Section 6.6: padding length >= frame payload length is PROTOCOL_ERROR
       use <- bool.guard(
-        padded == 1 && pad_length + 1 * padded + 4 >= length,
+        padded == 1 && pad_length >= length,
+        Error(ConnectionError(ProtocolError)),
+      )
+      // Padding + fixed fields must fit within the payload
+      use <- bool.guard(
+        padded == 1 && pad_length + 1 + 4 > length,
         Error(ConnectionError(ProtocolError)),
       )
 
