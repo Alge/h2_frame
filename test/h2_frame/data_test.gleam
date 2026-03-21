@@ -9,7 +9,12 @@ pub fn parse_data_test() {
   >>
   h2_frame.decode_frame(data)
   |> should.equal(
-    Ok(h2_frame.Data(stream_id: 1, end_stream: False, data: <<"hello":utf8>>)),
+    Ok(h2_frame.Data(
+      stream_id: 1,
+      end_stream: False,
+      padding: None,
+      data: <<"hello":utf8>>,
+    )),
   )
 }
 
@@ -20,7 +25,12 @@ pub fn parse_data_end_stream_test() {
   >>
   h2_frame.decode_frame(data)
   |> should.equal(
-    Ok(h2_frame.Data(stream_id: 1, end_stream: True, data: <<"bye":utf8>>)),
+    Ok(h2_frame.Data(
+      stream_id: 1,
+      end_stream: True,
+      padding: None,
+      data: <<"bye":utf8>>,
+    )),
   )
 }
 
@@ -34,7 +44,12 @@ pub fn parse_data_padded_test() {
   >>
   h2_frame.decode_frame(data)
   |> should.equal(
-    Ok(h2_frame.Data(stream_id: 1, end_stream: False, data: <<"hi":utf8>>)),
+    Ok(h2_frame.Data(
+      stream_id: 1,
+      end_stream: False,
+      padding: Some(3),
+      data: <<"hi":utf8>>,
+    )),
   )
 }
 
@@ -46,7 +61,12 @@ pub fn parse_data_padded_end_stream_test() {
   >>
   h2_frame.decode_frame(data)
   |> should.equal(
-    Ok(h2_frame.Data(stream_id: 1, end_stream: True, data: <<"hi":utf8>>)),
+    Ok(h2_frame.Data(
+      stream_id: 1,
+      end_stream: True,
+      padding: Some(3),
+      data: <<"hi":utf8>>,
+    )),
   )
 }
 
@@ -58,7 +78,12 @@ pub fn parse_data_padded_zero_padding_test() {
   >>
   h2_frame.decode_frame(data)
   |> should.equal(
-    Ok(h2_frame.Data(stream_id: 1, end_stream: False, data: <<"abc":utf8>>)),
+    Ok(h2_frame.Data(
+      stream_id: 1,
+      end_stream: False,
+      padding: Some(0),
+      data: <<"abc":utf8>>,
+    )),
   )
 }
 
@@ -81,7 +106,12 @@ pub fn parse_data_padded_max_padding_test() {
   >>
   h2_frame.decode_frame(data)
   |> should.equal(
-    Ok(h2_frame.Data(stream_id: 1, end_stream: False, data: <<>>)),
+    Ok(h2_frame.Data(
+      stream_id: 1,
+      end_stream: False,
+      padding: Some(4),
+      data: <<>>,
+    )),
   )
 }
 
@@ -112,7 +142,12 @@ pub fn parse_data_empty_payload_test() {
   let data = <<0:size(24), 0:size(8), 0:size(8), 0:size(1), 1:size(31)>>
   h2_frame.decode_frame(data)
   |> should.equal(
-    Ok(h2_frame.Data(stream_id: 1, end_stream: False, data: <<>>)),
+    Ok(h2_frame.Data(
+      stream_id: 1,
+      end_stream: False,
+      padding: None,
+      data: <<>>,
+    )),
   )
 }
 
@@ -126,7 +161,12 @@ pub fn parse_data_unknown_flags_ignored_test() {
   >>
   h2_frame.decode_frame(data)
   |> should.equal(
-    Ok(h2_frame.Data(stream_id: 1, end_stream: True, data: <<"hi":utf8>>)),
+    Ok(h2_frame.Data(
+      stream_id: 1,
+      end_stream: True,
+      padding: Some(3),
+      data: <<"hi":utf8>>,
+    )),
   )
 }
 
@@ -304,7 +344,12 @@ pub fn encode_data_roundtrip_test() {
     )
   h2_frame.decode_frame(encoded)
   |> should.equal(
-    Ok(h2_frame.Data(stream_id: 5, end_stream: True, data: <<"test":utf8>>)),
+    Ok(h2_frame.Data(
+      stream_id: 5,
+      end_stream: True,
+      padding: None,
+      data: <<"test":utf8>>,
+    )),
   )
 }
 
@@ -319,6 +364,63 @@ pub fn encode_data_padded_roundtrip_test() {
     )
   h2_frame.decode_frame(encoded)
   |> should.equal(
-    Ok(h2_frame.Data(stream_id: 3, end_stream: False, data: <<"abc":utf8>>)),
+    Ok(h2_frame.Data(
+      stream_id: 3,
+      end_stream: False,
+      padding: Some(5),
+      data: <<"abc":utf8>>,
+    )),
   )
+}
+
+// --- Padding field tests ---
+
+pub fn parse_data_padding_field_none_test() {
+  // Non-padded DATA frame should have padding: None
+  let data = <<
+    3:size(24), 0:size(8), 0:size(8), 0:size(1), 1:size(31), "abc":utf8,
+  >>
+  let assert Ok(h2_frame.Data(padding: padding, ..)) =
+    h2_frame.decode_frame(data)
+  padding |> should.equal(None)
+}
+
+pub fn parse_data_padding_field_some_test() {
+  // Padded DATA frame should have padding: Some(pad_length)
+  // pad_length=7, data="hi", padding=7 zero bytes
+  let data = <<
+    10:size(24), 0:size(8), 8:size(8), 0:size(1), 1:size(31), 7:size(8),
+    "hi":utf8, 0, 0, 0, 0, 0, 0, 0,
+  >>
+  let assert Ok(h2_frame.Data(padding: padding, ..)) =
+    h2_frame.decode_frame(data)
+  padding |> should.equal(Some(7))
+}
+
+pub fn encode_data_padding_field_roundtrip_test() {
+  // Padding value should survive encode/decode roundtrip
+  let assert Ok(encoded) =
+    h2_frame.encode_data(
+      stream_id: 1,
+      end_stream: False,
+      data: <<"test":utf8>>,
+      padding: Some(10),
+    )
+  let assert Ok(h2_frame.Data(padding: padding, ..)) =
+    h2_frame.decode_frame(encoded)
+  padding |> should.equal(Some(10))
+}
+
+pub fn encode_data_no_padding_field_roundtrip_test() {
+  // No padding should decode as None
+  let assert Ok(encoded) =
+    h2_frame.encode_data(
+      stream_id: 1,
+      end_stream: False,
+      data: <<"test":utf8>>,
+      padding: None,
+    )
+  let assert Ok(h2_frame.Data(padding: padding, ..)) =
+    h2_frame.decode_frame(encoded)
+  padding |> should.equal(None)
 }

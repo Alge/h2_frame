@@ -130,7 +130,7 @@ fn encode_settings_list(settings: List(Setting), encoded: BitArray) -> BitArray 
 }
 
 pub type Frame {
-  Data(stream_id: Int, end_stream: Bool, data: BitArray)
+  Data(stream_id: Int, end_stream: Bool, padding: Option(Int), data: BitArray)
   Headers(
     stream_id: Int,
     end_stream: Bool,
@@ -205,6 +205,10 @@ fn decode_data(data: BitArray) -> Result(Frame, FrameError) {
           Ok(Data(
             stream_id: stream_id,
             end_stream: end_stream_bit == 1,
+            padding: case padded {
+              0 -> None
+              _ -> Some(pad_length)
+            },
             data: data,
           ))
         }
